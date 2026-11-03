@@ -1,0 +1,1132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Socket Play</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0e0f1e; --panel:#161936; --panel2:#1d2146; --line:#2c3166;
+  --ink:#e9e9f5; --dim:#9da2c8; --amber:#ffcc4d; --teal:#4de1c1;
+  --pink:#ff6b9a; --red:#ff5a5a; --blue:#6cb2ff; --green:#5fd38a;
+  --pix:"Press Start 2P", ui-monospace, monospace;
+  --mono:"IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 var(--mono)}
+a{color:var(--teal)}
+header{padding:14px 16px 6px;max-width:1240px;margin:0 auto}
+h1{font:16px/1.4 var(--pix);color:var(--amber);margin:4px 0 4px;letter-spacing:1px}
+.sub{color:var(--dim);margin:0 0 10px;font-size:13px}
+#tabs{display:flex;flex-wrap:wrap;gap:6px}
+#tabs button{font:9px/1.5 var(--pix);background:var(--panel);color:var(--dim);border:2px solid var(--line);padding:7px 8px;cursor:pointer;border-radius:0}
+#tabs button.on{color:#141414;background:var(--amber);border-color:var(--amber)}
+#tabs button.done:not(.on){color:var(--teal);border-color:#2f6b62}
+main{max-width:1240px;margin:0 auto;padding:6px 16px 40px}
+
+/* ---------- stage ---------- */
+#stageWrap{position:relative;width:100%;border:3px solid var(--line);background:#0a0b17;overflow:hidden;image-rendering:pixelated}
+#stage{position:absolute;left:0;top:0;width:960px;height:450px;transform-origin:0 0}
+.zone{position:absolute}
+#sky{left:0;top:0;width:960px;height:94px;background:linear-gradient(#141a3d,#1b2150);border-bottom:2px dashed #2c3166}
+#sky .lbl{position:absolute;left:10px;top:8px;font:8px/1.4 var(--pix);color:#7f86c4}
+.area{top:100px;height:204px;width:452px;border:2px solid #2c3166;background:#121530}
+.area .lbl{position:absolute;left:8px;top:6px;font:8px/1.5 var(--pix);color:#8b92cc;max-width:430px}
+.area.off{opacity:.35}
+#areaL{left:12px} #areaR{left:496px}
+#kernel{left:0;top:312px;width:960px;height:138px;background:repeating-linear-gradient(90deg,#1a1d3c 0 16px,#181b38 16px 32px);border-top:3px solid #3a4080}
+#kernel .lbl{position:absolute;right:10px;bottom:6px;font:8px/1.5 var(--pix);color:#8b92cc;text-align:right}
+#wire{position:absolute;height:4px;top:410px;background:repeating-linear-gradient(90deg,var(--teal) 0 8px,transparent 8px 14px);opacity:.75}
+#wireLbl{position:absolute;top:418px;font:8px/1.4 var(--pix);color:var(--teal)}
+#bench{position:absolute;left:28px;top:330px;width:184px;height:76px;border:2px dashed #4b5296;display:none}
+#bench .lbl{position:absolute;left:4px;top:3px;font:7px/1.4 var(--pix);color:#9aa2e6}
+.rec{position:absolute;top:338px;font:7px/1.3 var(--pix);background:#2a1d3d;border:2px solid var(--pink);color:#ffd2e0;padding:3px 4px;white-space:nowrap;z-index:3}
+.rec small{display:block;color:#c9a3b8;font:6px/1.3 var(--pix)}
+.tok{position:absolute;top:30px;width:52px;height:38px;background:#2b3a6e;border:2px solid var(--blue);font:7px/1.25 var(--pix);color:#dfe8ff;text-align:center;padding-top:3px}
+.tok.dead{opacity:.35;border-style:dashed}
+.door{position:absolute;top:322px;width:46px;height:70px;background:#5a3b23;border:3px solid #2a1a0e;box-shadow:inset 0 0 0 3px #7a5232;transition:opacity .4s}
+.door .plate{position:absolute;left:50%;top:-2px;transform:translate(-50%,-100%);white-space:nowrap;font:8px/1.3 var(--pix);background:var(--amber);color:#1b1300;padding:3px 4px}
+.door .knob{position:absolute;right:6px;top:34px;width:6px;height:6px;background:var(--amber)}
+.door .sub{position:absolute;left:50%;bottom:-16px;transform:translateX(-50%);white-space:nowrap;font:7px/1.2 var(--pix);color:var(--dim)}
+.door.closed{background:transparent;border:3px dashed #5a5f80;box-shadow:none}
+.door.closed .plate{background:#3a3f60;color:#c9cdf0}
+.door.closed .knob{display:none}
+.actor{position:absolute;top:150px;width:96px;height:150px;transition:left .9s steps(9),opacity .5s}
+.actor .spr{position:absolute;left:8px;top:50px;width:80px;height:80px;image-rendering:pixelated;animation:bob 1.1s steps(2) infinite}
+.actor .hat{position:absolute;image-rendering:pixelated}
+.actor .name{position:absolute;left:-12px;right:-12px;top:132px;text-align:center;font:7px/1.2 var(--pix);color:#c8cdf5;white-space:nowrap}
+.actor .badges{position:absolute;left:-30px;right:-30px;top:26px;display:flex;flex-wrap:wrap;justify-content:center;gap:2px}
+.badge{font:7px/1.2 var(--pix);background:#262b58;border:2px solid #4b5296;color:#dfe2ff;padding:2px 3px;white-space:nowrap}
+.badge.b-listen{border-color:var(--teal);color:var(--teal)}
+.badge.b-zzz{border-color:#7f86c4;color:#c7cbf3}
+.badge.b-time{border-color:var(--amber);color:var(--amber)}
+.badge.b-err{border-color:var(--red);color:var(--red)}
+.bubble{position:absolute;left:50%;bottom:128px;transform:translateX(-50%);max-width:230px;width:max-content;background:#fdfdf3;color:#141414;font:12px/1.35 var(--mono);padding:5px 7px;border:3px solid #141414;z-index:5}
+.bubble:after{content:"";position:absolute;left:50%;bottom:-9px;margin-left:-6px;border:6px solid transparent;border-top-color:#141414}
+.actor.fade{opacity:.25}
+.actor.zz .spr{animation:none;filter:brightness(.8)}
+.zfly{position:absolute;left:70px;top:44px;font:10px var(--pix);color:#c7cbf3;animation:zfly 1.6s linear infinite}
+@keyframes bob{50%{transform:translateY(-3px)}}
+@keyframes zfly{0%{opacity:0;transform:translate(0,0)}30%{opacity:1}100%{opacity:0;transform:translate(14px,-26px)}}
+#dev{position:absolute;top:14px;width:64px;height:64px;transition:left .8s steps(8)}
+#dev img{width:64px;height:64px;image-rendering:pixelated;animation:float 1.6s steps(4) infinite}
+#dev .nm{position:absolute;left:-10px;top:66px;width:84px;text-align:center;font:6px var(--pix);color:#b9a8ff}
+@keyframes float{50%{transform:translateY(-4px)}}
+#cast{position:absolute;top:24px;font:12px/1.3 var(--mono);background:#ffcc4d;color:#1b1300;padding:4px 7px;border:3px solid #1b1300;white-space:nowrap;display:none;z-index:6}
+#beam{position:absolute;height:3px;transform-origin:0 50%;background:repeating-linear-gradient(90deg,var(--amber) 0 6px,transparent 6px 10px);display:none;animation:beam .6s linear infinite;z-index:4}
+@keyframes beam{to{background-position:20px 0}}
+.pkt{position:absolute;left:0;top:0;z-index:8;pointer-events:none;display:flex;flex-direction:column;align-items:center}
+.pkt img{width:40px;height:28px;image-rendering:pixelated}
+.pkt span{font:11px/1.2 var(--mono);background:#0b0c18;border:2px solid var(--teal);color:#e9fff9;padding:1px 4px;margin-top:2px;white-space:nowrap}
+.pkt.ctl span{border-color:var(--amber);color:var(--amber);font:8px/1.4 var(--pix)}
+.pkt.rst span{border-color:var(--red);color:var(--red);font:8px/1.4 var(--pix)}
+.nl{color:var(--pink);font-weight:600}
+#compare{position:absolute;left:150px;top:104px;width:660px;background:#0b0c18;border:3px solid var(--pink);padding:8px 10px;z-index:9;display:none;font:13px/1.6 var(--mono)}
+#compare .row{display:flex;gap:2px;align-items:center;flex-wrap:wrap}
+#compare .row b{width:150px;font-weight:400;color:var(--dim)}
+#compare .c{display:inline-block;min-width:13px;text-align:center;background:#1d2146;border:1px solid #2c3166}
+#compare .c.bad{background:#5a1f33;border-color:var(--pink);color:#ffd2e0}
+#compare .note{margin-top:6px;color:var(--dim);font-size:12px}
+
+/* ---------- lower panels ---------- */
+#lower{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:12px;margin-top:12px}
+.panel{background:var(--panel);border:3px solid var(--line)}
+#narr{padding:12px 14px;display:flex;flex-direction:column;min-height:330px}
+#sceneTitle{font:11px/1.5 var(--pix);color:var(--amber);margin:0}
+#stepNo{color:var(--dim);font-size:12px;margin:2px 0 8px}
+#say{flex:1}
+#say p{margin:0 0 8px}
+#say code,.gl code{background:#252a57;padding:0 4px;color:#ffe9a8}
+.src{color:var(--dim);font-size:12px}
+q{color:#d8f8ef}
+#quiz{margin-top:8px;display:none;border:2px solid var(--pink);padding:8px 10px;background:#221a3a}
+#quiz .qq{font-weight:600;margin-bottom:6px}
+#quiz button{display:block;width:100%;text-align:left;margin:4px 0;font:14px/1.4 var(--mono);background:var(--panel2);color:var(--ink);border:2px solid var(--line);padding:6px 8px;cursor:pointer}
+#quiz button:hover:not(:disabled){border-color:var(--pink)}
+#quiz button.right{border-color:var(--green);background:#1b3a2b}
+#quiz button.wrong{border-color:var(--red);background:#3a1b24}
+#quiz .why{margin-top:6px;font-size:14px}
+#inbox{margin-top:8px;display:none;border:2px solid var(--teal);padding:8px 10px;background:#13302c}
+#inbox input{width:100%;font:15px var(--mono);background:#0b0c18;color:#e9fff9;border:2px solid var(--teal);padding:6px;margin:6px 0}
+#inbox button{font:9px var(--pix);background:var(--teal);color:#0b1f1b;border:0;padding:8px 10px;cursor:pointer}
+#controls{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+#controls button{font:9px/1.4 var(--pix);background:var(--panel2);color:var(--ink);border:2px solid var(--line);padding:9px 10px;cursor:pointer}
+#controls button:hover:not(:disabled){border-color:var(--amber)}
+#controls button:disabled{opacity:.35;cursor:default}
+#controls #next{background:var(--amber);color:#1b1300;border-color:var(--amber)}
+#codeBox{display:flex;flex-direction:column;min-height:330px}
+#codeName{font:9px/1.5 var(--pix);color:var(--teal);padding:8px 10px;border-bottom:2px solid var(--line)}
+#code{position:relative;margin:0;flex:1;overflow:auto;max-height:420px;font:13px/1.5 var(--mono);padding:6px 0;counter-reset:ln}
+#code .ln{display:block;padding:0 10px 0 0;white-space:pre}
+#code .ln:before{content:attr(data-n);display:inline-block;width:38px;text-align:right;margin-right:12px;color:#565c95}
+#code .ln.hl{background:#3a3313;box-shadow:inset 4px 0 0 var(--amber)}
+#code .cm{color:#7f86b8}
+#code .st{color:#9fe3b8}
+#terms{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:12px}
+.term-win{background:#07080f;border:3px solid #2c3166;min-height:150px;display:flex;flex-direction:column}
+.term-win .tt{font:8px/1.5 var(--pix);background:#2c3166;color:#dfe2ff;padding:5px 8px}
+.term-win pre{margin:0;padding:8px 10px;flex:1;overflow:auto;max-height:190px;font:13px/1.45 var(--mono);color:#cfe9d6;white-space:pre-wrap;word-break:break-word}
+.term-win pre .pr{color:var(--amber)}
+.term-win pre .er{color:var(--red)}
+.term-win pre .you{color:#fff;background:#253b2f}
+
+/* ---------- tooltips + glossary ---------- */
+.term{border-bottom:2px dotted var(--teal);cursor:help;color:#cff7ee}
+#code .term{border-bottom:1px dotted var(--teal);color:inherit}
+#tip{position:fixed;z-index:50;max-width:340px;background:#fdfdf3;color:#141414;border:3px solid #141414;padding:9px 11px;font:13px/1.45 var(--mono);display:none;box-shadow:6px 6px 0 #000}
+#tip q{color:#0b5c4e;font-weight:600}
+#tip code{background:#e9e6cf;color:#3d2f00;padding:0 3px}
+#tip h4{margin:0 0 4px;font:10px/1.4 var(--pix)}
+#tip .o{margin-top:6px;padding-top:6px;border-top:2px dashed #b9b9a0}
+#tip .s{margin-top:4px;font-size:11px;color:#5b5b48}
+section.extra{margin-top:22px}
+section.extra h2{font:12px/1.5 var(--pix);color:var(--amber)}
+.gl{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.gl > div{background:var(--panel);border:2px solid var(--line);padding:9px 11px;font-size:13px}
+.gl b{color:var(--teal)}
+.gl .o{color:var(--dim);margin-top:4px}
+#sources li{margin:3px 0;font-size:13px}
+@media (max-width:820px){
+  #lower{grid-template-columns:minmax(0,1fr)}
+  #narr,#codeBox{min-height:0}
+  #code{max-height:260px}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>SOCKET PLAY</h1>
+  <p class="sub">A pixel play about <span class="term" data-k="server">servers</span>, <span class="term" data-k="client">clients</span> and <span class="term" data-k="nc">nc</span>. Pick a scene, then press <b>Next</b> (or the → key). Dotted words explain themselves on hover or tap.</p>
+  <nav id="tabs"></nav>
+</header>
+<main>
+  <div id="stageWrap">
+    <div id="stage">
+      <div class="zone" id="sky"><div class="lbl">THE DEVELOPER'S DESK: YOUR C CODE, CALLING THE API</div></div>
+      <div class="zone area" id="areaL"><div class="lbl"></div></div>
+      <div class="zone area" id="areaR"><div class="lbl"></div></div>
+      <div class="zone" id="kernel"><div class="lbl">OS KERNEL · TCP/IP<br>OWNS PORTS, QUEUES, PACKETS</div></div>
+      <div id="bench"><div class="lbl">LISTEN QUEUE (BACKLOG)</div></div>
+      <div id="recs"></div>
+      <div id="wire"></div><div id="wireLbl"></div>
+      <div id="dev"><img alt="developer"><div class="nm">DEVELOPER (YOU)</div></div>
+      <div id="cast"></div><div id="beam"></div>
+      <div id="layer"></div>
+      <div id="compare"></div>
+    </div>
+  </div>
+
+  <div id="lower">
+    <div class="panel" id="narr">
+      <h2 id="sceneTitle"></h2>
+      <div id="stepNo"></div>
+      <div id="say"></div>
+      <div id="quiz"></div>
+      <div id="inbox"></div>
+      <div id="controls">
+        <button id="restart" title="Restart scene">↺ RESTART</button>
+        <button id="back">◀ BACK</button>
+        <button id="next">NEXT ▶</button>
+        <button id="play">▶▶ AUTO</button>
+      </div>
+    </div>
+    <div class="panel" id="codeBox">
+      <div id="codeName"></div>
+      <pre id="code"></pre>
+    </div>
+  </div>
+
+  <div id="terms"></div>
+
+  <section class="extra">
+    <h2>GLOSSARY</h2>
+    <div class="gl" id="glossary"></div>
+  </section>
+  <section class="extra">
+    <h2>SOURCES</h2>
+    <ul id="sources">
+      <li>POSIX (The Open Group Base Specifications): <a href="https://pubs.opengroup.org/onlinepubs/9799919799/functions/socket.html">socket()</a>, <a href="https://man7.org/linux/man-pages/man3/bind.3p.html">bind()</a>, <a href="https://pubs.opengroup.org/onlinepubs/9699919799.2013edition/functions/listen.html">listen()</a>, <a href="https://pubs.opengroup.org/onlinepubs/9699919799/functions/accept.html">accept()</a>, <a href="https://pubs.opengroup.org/onlinepubs/9799919799/functions/send.html">send()</a>, <a href="https://man.archlinux.org/man/recv.3p">recv()</a>, <a href="https://pubs.opengroup.org/onlinepubs/9699919799/functions/close.html">close()</a>, <a href="https://manpages.org/setsockopt">setsockopt()</a></li>
+      <li>Linux man-pages: <a href="https://man7.org/linux/man-pages/man2/listen.2.html">listen(2)</a>, <a href="https://man7.org/linux/man-pages/man2/connect.2.html">connect(2)</a>, <a href="https://man7.org/linux/man-pages/man7/ip.7.html">ip(7)</a></li>
+      <li>IETF: <a href="https://rfc-editor.org/rfc/rfc9293.html">RFC 9293, Transmission Control Protocol (TCP)</a></li>
+      <li>TCP connection states: <a href="https://learn.microsoft.com/mt-mt/windows/win32/api/mstcpip/ne-mstcpip-tcpstate">TCPSTATE enumeration, Microsoft Learn</a>; Linux TIME-WAIT length from the kernel source, <code>include/net/tcp.h</code> (<code>TCP_TIMEWAIT_LEN</code>, 60 s)</li>
+      <li>netcat: <a href="https://manpages.debian.org/unstable/netcat-openbsd/nc.1.en.html">nc(1), OpenBSD netcat</a>; <a href="https://man.archlinux.org/man/cat.1p.en">cat(1p), POSIX</a></li>
+      <li>Word origins: Online Etymology Dictionary (<a href="https://www.etymonline.com/word/socket">etymonline.com</a>), one entry per word, linked in each tooltip.</li>
+      <li>Behaviour checked by running <code>server.c</code>, <code>client.c</code> and <code>nc</code> on Linux. Port numbers like 41366 are examples from those runs.</li>
+    </ul>
+  </section>
+</main>
+<div id="tip" role="tooltip"></div>
+
+<script>
+"use strict";
+/* ================= code listings ================= */
+var CODES = {
+  server: {name: "server.c (your server)", text: "/*\n * server.c - a tiny TCP server: reads one line from each client and answers.\n *\n * Build: gcc -std=c90 -pedantic -Wall -Wextra -Werror server.c -o server\n * Test:  ./server                                   (terminal 1)\n *        echo \"hello from Dan's client\" | nc 127.0.0.1 12345   (terminal 2)\n */\n#define _POSIX_C_SOURCE 200112L     /* socket API is POSIX, not C90 */\n\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <unistd.h>\n#include <sys/types.h>\n#include <sys/socket.h>\n#include <netinet/in.h>\n#include <arpa/inet.h>\n\n#define PORT 12345\n\nstatic int socket_create(void)\n{\n    int h_socket, on = 1;\n\n    printf(\"Create the socket\\n\");\n    h_socket = socket(AF_INET, SOCK_STREAM, 0);\n    if (h_socket < 0)\n        return -1;\n\n    /* Allow restarting the server at once, instead of waiting ~1 minute\n       for the old connection's TIME_WAIT state to expire. */\n    setsockopt(h_socket, SOL_SOCKET, SO_REUSEADDR, &on, sizeof on);\n    return h_socket;\n}\n\nstatic int socket_bind(int h_socket)\n{\n    struct sockaddr_in local;\n\n    memset(&local, 0, sizeof local);\n    local.sin_family = AF_INET;                  /* IPv4 */\n    local.sin_addr.s_addr = htonl(INADDR_ANY);   /* any local interface */\n    local.sin_port = htons(PORT);                /* port in network byte order */\n\n    return bind(h_socket, (struct sockaddr *)&local, sizeof local);\n}\n\n/* Cut the line ending that nc and telnet send: \"text\\r\\n\" -> \"text\". */\nstatic void chomp(char *s)\n{\n    size_t n = strlen(s);\n    while (n > 0 && (s[n - 1] == '\\n' || s[n - 1] == '\\r'))\n        s[--n] = '\\0';\n}\n\nint main(void)\n{\n    int socket_desc, sock;\n    socklen_t client_len;\n    struct sockaddr_in client;\n    char client_message[200];\n    const char *message;\n    const char *p_message = \"hello from Dan's client\";\n    long n;\n\n    socket_desc = socket_create();\n    if (socket_desc == -1) {\n        perror(\"socket\");\n        return 1;\n    }\n    printf(\"Socket created\\n\");\n\n    if (socket_bind(socket_desc) < 0) {\n        perror(\"bind failed\");\n        return 1;\n    }\n    printf(\"bind done\\n\");\n\n    if (listen(socket_desc, 3) < 0) {\n        perror(\"listen failed\");\n        return 1;\n    }\n\n    for (;;) {\n        printf(\"Waiting for incoming connections on port %d...\\n\", PORT);\n        fflush(stdout);\n\n        client_len = sizeof client;\n        sock = accept(socket_desc, (struct sockaddr *)&client, &client_len);\n        if (sock < 0) {\n            perror(\"accept failed\");\n            continue;                /* one bad connection shouldn't stop the server */\n        }\n        printf(\"Connection accepted from %s:%d\\n\",\n               inet_ntoa(client.sin_addr), ntohs(client.sin_port));\n\n        /* Leave one byte for the '\\0' that recv does not add. */\n        n = (long)recv(sock, client_message, sizeof client_message - 1, 0);\n        if (n < 0) {\n            perror(\"recv failed\");\n            close(sock);\n            continue;\n        }\n        if (n == 0) {\n            printf(\"Client closed the connection without sending anything\\n\");\n            close(sock);\n            continue;\n        }\n        client_message[n] = '\\0';\n        chomp(client_message);\n        printf(\"Client says: %s\\n\", client_message);\n\n        if (strcmp(p_message, client_message) == 0)\n            message = \"Hi there!\\n\";\n        else\n            message = \"Invalid message!\\n\";\n\n        if (send(sock, message, strlen(message), 0) < 0)\n            perror(\"send failed\");\n\n        close(sock);\n    }\n}"},
+  client: {name: "client.c (your client)", text: "/*\n * client.c - connects to server.c, sends one line typed by the user,\n * and prints the server's answer.\n *\n * Build: gcc -std=c90 -pedantic -Wall -Wextra -Werror client.c -o client\n * Run:   ./client          (start ./server in another terminal first)\n */\n#define _POSIX_C_SOURCE 200112L     /* socket API is POSIX, not C90 */\n\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <unistd.h>\n#include <sys/types.h>\n#include <sys/time.h>               /* struct timeval for the timeouts */\n#include <sys/socket.h>\n#include <netinet/in.h>\n#include <arpa/inet.h>\n\n#define SERVER_IP   \"127.0.0.1\"\n#define PORT        12345\n#define TIMEOUT_SEC 20\n\nstatic int socket_create(void)\n{\n    printf(\"Create the socket\\n\");\n    return socket(AF_INET, SOCK_STREAM, 0);     /* -1 on failure */\n}\n\n/* Connect to the server. Returns 0 on success, -1 on failure. */\nstatic int socket_connect(int h_socket)\n{\n    struct sockaddr_in remote;\n\n    memset(&remote, 0, sizeof remote);\n    remote.sin_family = AF_INET;\n    remote.sin_port = htons(PORT);\n    if (inet_pton(AF_INET, SERVER_IP, &remote.sin_addr) != 1)\n        return -1;                              /* not a valid IPv4 address */\n\n    return connect(h_socket, (struct sockaddr *)&remote, sizeof remote);\n}\n\n/* Make send() and recv() give up after TIMEOUT_SEC instead of waiting forever. */\nstatic int socket_set_timeouts(int h_socket)\n{\n    struct timeval tv;\n\n    tv.tv_sec = TIMEOUT_SEC;\n    tv.tv_usec = 0;\n    if (setsockopt(h_socket, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv) < 0)\n        return -1;\n    if (setsockopt(h_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv) < 0)\n        return -1;\n    return 0;\n}\n\n/* Send all len bytes. send() may send fewer than asked, so loop. */\nstatic int socket_send(int h_socket, const char *rqst, size_t len)\n{\n    ssize_t n;\n\n    while (len > 0) {\n        n = send(h_socket, rqst, len, 0);\n        if (n < 0)\n            return -1;\n        rqst += n;\n        len -= (size_t)n;\n    }\n    return 0;\n}\n\n/* Receive up to size - 1 bytes and add the '\\0' that recv() does not.\n   Returns the number of bytes received, 0 if the server closed the\n   connection, or -1 on error or timeout. */\nstatic long socket_receive(int h_socket, char *rsp, size_t size)\n{\n    ssize_t n = recv(h_socket, rsp, size - 1, 0);\n\n    if (n < 0)\n        return -1;\n    rsp[n] = '\\0';\n    return (long)n;\n}\n\n/* Cut a trailing line ending: \"text\\r\\n\" -> \"text\". */\nstatic void chomp(char *s)\n{\n    size_t n = strlen(s);\n    while (n > 0 && (s[n - 1] == '\\n' || s[n - 1] == '\\r'))\n        s[--n] = '\\0';\n}\n\nint main(void)\n{\n    int h_socket;\n    long read_size;\n    char send_to_server[100];\n    char server_reply[200];\n\n    h_socket = socket_create();\n    if (h_socket == -1) {\n        perror(\"socket\");\n        return 1;\n    }\n\n    if (socket_connect(h_socket) < 0) {\n        perror(\"connect\");                      /* e.g. Connection refused */\n        close(h_socket);\n        return 1;\n    }\n    printf(\"Successfully connected to %s:%d\\n\", SERVER_IP, PORT);\n\n    if (socket_set_timeouts(h_socket) < 0) {\n        perror(\"setsockopt\");\n        close(h_socket);\n        return 1;\n    }\n\n    printf(\"Enter the message: \");\n    fflush(stdout);\n    if (fgets(send_to_server, sizeof send_to_server, stdin) == NULL) {\n        printf(\"\\nNo input\\n\");\n        close(h_socket);\n        return 1;\n    }\n\n    /* The '\\n' from fgets is sent too; the server strips it. */\n    if (socket_send(h_socket, send_to_server, strlen(send_to_server)) < 0) {\n        perror(\"send\");\n        close(h_socket);\n        return 1;\n    }\n\n    read_size = socket_receive(h_socket, server_reply, sizeof server_reply);\n    if (read_size < 0) {\n        perror(\"recv\");                         /* includes the 20 s timeout */\n        close(h_socket);\n        return 1;\n    }\n    if (read_size == 0) {\n        printf(\"Server closed the connection without answering\\n\");\n    } else {\n        chomp(server_reply);\n        printf(\"Server response: %s\\n\", server_reply);\n    }\n\n    close(h_socket);\n    return 0;\n}"},
+  ncClient: {name: "nc 127.0.0.1 12345: what it does (simplified sketch, not nc's source)", text: "/* nc 127.0.0.1 12345: what it does, simplified.\n   A sketch of the idea, not nc's real source code. */\n\nfd = socket(AF_INET, SOCK_STREAM, 0);\nconnect(fd, 127.0.0.1 port 12345);      /* active open: the client side */\n\nrepeat:\n    keyboard line -> send(fd, line);     /* the '\\n' from Enter is included */\n    recv(fd, ...)  -> print on screen;\nuntil recv() returns 0                   /* the other side closed */\n\nclose(fd);"},
+  ncServer: {name: "nc -l 127.0.0.1 12345: what it does (simplified sketch, not nc's source)", text: "/* nc -l 127.0.0.1 12345: what it does, simplified.\n   A sketch of the idea, not nc's real source code. */\n\nfd = socket(AF_INET, SOCK_STREAM, 0);\nbind(fd, 127.0.0.1 port 12345);\nlisten(fd, ...);                         /* passive open: the server side */\nconn = accept(fd, ...);                  /* waits for one client */\n\nrepeat:\n    recv(conn, ...) -> print on screen;\n    keyboard line   -> send(conn, line);\nuntil recv() returns 0                   /* the other side closed */\n\nclose(conn);                             /* without -k, nc now exits */"},
+  fix: {name: "recv_line(): the fix for split messages (not in your server.c yet)", text: "/* Read until '\\n', until the buffer is full, or until the peer closes.\n   Returns the number of bytes stored, or -1 on error or timeout. */\nstatic long recv_line(int fd, char *buf, size_t size)\n{\n    size_t used = 0;\n    ssize_t n;\n\n    while (used < size - 1) {\n        n = recv(fd, buf + used, size - 1 - used, 0);\n        if (n < 0)\n            return -1;                  /* error or timeout */\n        if (n == 0)\n            break;                      /* the peer closed the connection */\n        used += (size_t)n;\n        buf[used] = '\\0';\n        if (memchr(buf + used - (size_t)n, '\\n', (size_t)n) != NULL)\n            break;                      /* a whole line has arrived */\n    }\n    buf[used] = '\\0';\n    return (long)used;\n}\n\n/* In server.c, replace the single recv() with:\n       n = recv_line(sock, client_message, sizeof client_message);\n   (memchr needs <string.h>, which server.c already includes.) */"}
+};
+
+/* ================= glossary ================= */
+var E = "https://www.etymonline.com/word/";
+var G = {
+  socket: {t: "socket", m: "One end of a network conversation. <code>socket()</code> creates it; your program then refers to it by a small number, its file descriptor. POSIX: socket() shall <q>create an unbound socket in a communications domain, and return a file descriptor</q>.", o: "c. 1300 <i>soket</i>, \"spearhead\", from Anglo-French, a diminutive of Old French <i>soc</i>, \"plowshare\". The sense \"hollow part for receiving and holding something\" is from the early 1400s; the electrical-outlet sense by 1885.", s: E + "socket"},
+  port: {t: "port", m: "A 16-bit number that picks out one service on a machine. RFC 9293: <q>TCP uses port numbers to identify application services</q>. Your server uses 12345.", o: "From Latin <i>porta</i>, \"gate, door\", via Old French <i>porte</i> (c. 1300). Etymonline records the computing sense by 1979, building on a 1953 electronics sense, and says both are probably short for <i>portal</i>. (The harbour word, Latin <i>portus</i>, is a separate entry.)", s: E + "port"},
+  bind: {t: "bind()", m: "Gives the socket its local address and port. POSIX: sockets created by socket() <q>are initially unnamed</q>; bind() assigns the name. If the port is taken: EADDRINUSE, <q>The specified address is already in use.</q>", o: "Old English <i>bindan</i>, \"to tie up with bonds\", from the Proto-Indo-European root <i>*bhendh-</i>, \"to bind\".", s: E + "bind"},
+  listen: {t: "listen()", m: "Turns a socket into a waiting one. POSIX: it shall <q>mark a connection-mode socket ... as accepting connections</q>. Linux calls it a <q>passive socket</q>.", o: "Old English <i>hlysnan</i>, \"to listen, hear; attend to, obey\", from the PIE root <i>*kleu-</i>, \"to hear\". The <i>-t-</i> probably came from the related verb <i>list</i>, \"hearken\".", s: E + "listen"},
+  accept: {t: "accept()", m: "Takes the first finished connection off the listen queue. POSIX: it shall <q>extract the first connection on the queue of pending connections</q>, create a new socket and give it a new file descriptor. <q>The original socket remains open and can accept more connections.</q> With an empty queue it blocks.", o: "Late 1300s, from Latin <i>acceptare</i>, \"take or receive willingly\", from <i>accipere</i> = <i>ad-</i> \"to\" + <i>capere</i> \"to take\" (PIE <i>*kap-</i>, \"to grasp\").", s: E + "accept"},
+  connect: {t: "connect()", m: "The client's call: \"connect me to that address and port\". If nobody listens there: ECONNREFUSED. If the socket has no local port yet, Linux binds it <q>to a random free port</q> (ip(7)).", o: "Mid-1400s, from Latin <i>conectere</i>, \"join together\" = <i>com-</i> \"together\" + <i>nectere</i> \"to bind, tie\" (PIE <i>*ned-</i>).", s: E + "connect"},
+  send: {t: "send()", m: "Hands bytes to the kernel for sending. POSIX: <q>Successful completion of a call to send() does not guarantee delivery of the message.</q> It returns the number of bytes sent, which can be fewer than you asked for.", o: "Old English <i>sendan</i>, \"send, dispatch\" (as a messenger), from a Germanic causative meaning \"make to go\".", s: E + "send"},
+  recv: {t: "recv()", m: "Takes received bytes from the kernel. POSIX: it <q>shall block until a message arrives</q>. It returns the byte count, <b>0</b> when <q>the peer has performed an orderly shutdown</q>, or -1 on error. It never adds a '\\0'.", o: "<i>recv</i> is a shortened <i>receive</i>: c. 1300, from Old North French <i>receivre</i>, from Latin <i>recipere</i>, \"take back, admit\" (<i>re-</i> + <i>capere</i>, \"to take\").", s: E + "receive"},
+  close: {t: "close()", m: "Releases a file descriptor. POSIX: <q>If fildes refers to a socket, close() shall cause the socket to be destroyed.</q> TCP then sends FIN to the other side.", o: "c. 1200, from Old French <i>clos-</i>, from Latin <i>claudere</i>, \"to shut\".", s: E + "close"},
+  setsockopt: {t: "setsockopt()", m: "\"Set socket option\": changes a setting of a socket, such as SO_REUSEADDR or SO_RCVTIMEO.", o: "A compound name: set + sock(et) + opt(ion).", s: "https://manpages.org/setsockopt"},
+  reuse: {t: "SO_REUSEADDR", m: "POSIX: the rules for bind() <q>should allow reuse of local addresses</q>. Servers set it so a restart can bind the port at once, while an old connection is still in TIME-WAIT.", o: "SO = socket option; REUSE ADDR(ess).", s: "https://manpages.org/setsockopt"},
+  rcvtimeo: {t: "SO_RCVTIMEO", m: "Receive timeout. POSIX: when it expires, the call shall <q>return with a partial count or errno set to [EAGAIN] or [EWOULDBLOCK] if no data is received</q>. Default 0 means \"wait forever\".", o: "SO = socket option; RCV = receive; TIMEO = timeout.", s: "https://manpages.org/setsockopt"},
+  backlog: {t: "backlog", m: "The 2nd argument of listen(). Linux: the <q>queue length for completely established sockets waiting to be accepted</q>. POSIX calls it <q>a hint to the implementation</q>. When the queue is full, a client may get ECONNREFUSED, or its request may be ignored so a later retry succeeds.", o: "1680s: a large log placed at the back of a fireplace to keep the fire going. \"Something stored up\" is from 1883; \"arrears of orders\" from 1932.", s: E + "backlog"},
+  kernel: {t: "kernel", m: "The core of the operating system. It owns the ports, the queues and the actual packets; your program asks it for things through system calls like socket() and recv().", o: "Old English <i>cyrnel</i>, \"seed, pip\", a diminutive of <i>corn</i> (\"grain\"). The figurative \"core of anything\" is from the 1550s.", s: E + "kernel"},
+  server: {t: "server", m: "The side that waits: it binds a known port, listens and accepts. RFC 9293 calls this a <q>passive OPEN</q>.", o: "Late 1300s, \"one who serves\", from <i>serve</i>, from Latin <i>servire</i>, \"to be a servant\". Etymonline dates the computing sense from 1992.", s: E + "server"},
+  client: {t: "client", m: "The side that calls: it knows the server's address and connects. RFC 9293 calls this an <q>active OPEN</q>.", o: "c. 1300, from Latin <i>cliens</i>, \"follower, retainer\", related to <i>clinare</i>, \"to incline, lean\": one who leans on another for protection.", s: E + "client"},
+  handshake: {t: "three-way handshake", m: "RFC 9293: <q>the procedure used to establish a connection</q>: SYN, then SYN+ACK, then ACK. The two kernels do it; your programs only call connect() and accept().", o: "<i>Handshake</i> as the hand-grip greeting is recorded by 1712.", s: E + "handshake"},
+  syn: {t: "SYN", m: "A TCP control bit. RFC 9293: <q>Synchronize sequence numbers.</q> The first packet of every connection.", o: "Short for <i>synchronize</i>.", s: "https://rfc-editor.org/rfc/rfc9293.html"},
+  ack: {t: "ACK", m: "A TCP control bit. RFC 9293: <q>Acknowledgment field is significant.</q> \"I got your bytes up to here.\"", o: "Short for <i>acknowledgment</i>.", s: "https://rfc-editor.org/rfc/rfc9293.html"},
+  rst: {t: "RST", m: "A TCP control bit. RFC 9293: <q>Reset the connection.</q> For a port with no connection, <q>a reset is sent</q>; your program sees it as \"Connection refused\".", o: "Short for <i>reset</i>.", s: "https://rfc-editor.org/rfc/rfc9293.html"},
+  fin: {t: "FIN", m: "A TCP control bit. RFC 9293: <q>No more data from sender.</q> Sent when a side closes; the other side's recv() then returns 0.", o: "Short for <i>finish</i>.", s: "https://rfc-editor.org/rfc/rfc9293.html"},
+  timewait: {t: "TIME-WAIT", m: "The state of the side that closed first, after it sent the final ACK: <q>waiting for enough time to pass to be sure the remote TCP received the acknowledgment of its request to end the connection</q> (Microsoft Learn, TCP states). RFC 9293: it <q>MUST linger in the TIME-WAIT state for a time 2xMSL</q> (MSL: Maximum Segment Lifetime). Linux uses 60 s. While it lasts, the port counts as in use, so a restarted server needs SO_REUSEADDR.", o: "", s: "https://rfc-editor.org/rfc/rfc9293.html"},
+  finwait: {t: "FIN-WAIT-1 / FIN-WAIT-2", m: "States of the side that closed first. FIN-WAIT-1: <q>waiting for a request to end the connection from the remote TCP, or an acknowledgment of the previously sent request to end the connection</q>. FIN-WAIT-2 (its FIN was acknowledged): <q>waiting for a request to end the connection from the remote TCP</q>.", o: "", s: "https://learn.microsoft.com/mt-mt/windows/win32/api/mstcpip/ne-mstcpip-tcpstate"},
+  closewait: {t: "CLOSE-WAIT", m: "The other side's FIN has arrived and been acknowledged: <q>waiting for a request to end the connection from the local user</q>, i.e. until this program calls close(). (recv() now returns 0.)", o: "", s: "https://learn.microsoft.com/mt-mt/windows/win32/api/mstcpip/ne-mstcpip-tcpstate"},
+  lastack: {t: "LAST-ACK", m: "After this side's own FIN: <q>waiting for an acknowledgment of the request to end the connection that was previously sent to the remote TCP</q>. When the final ACK arrives, the connection is closed.", o: "", s: "https://learn.microsoft.com/mt-mt/windows/win32/api/mstcpip/ne-mstcpip-tcpstate"},
+  stream: {t: "stream (SOCK_STREAM)", m: "POSIX: <q>sequenced, reliable, bidirectional, connection-mode byte streams</q>. A flow of bytes with no message boundaries: RFC 9293 says TCP <q>guarantees no correlation between the boundaries of TCP segments sent and received</q>.", o: "Old English <i>stream</i>, \"course of water, current\", from the PIE root <i>*sreu-</i>, \"to flow\".", s: E + "stream"},
+  tcp: {t: "TCP (protocol)", m: "Transmission Control Protocol: the rules both kernels follow. RFC 9293: <q>a reliable, in-order, byte-stream service to applications</q>.", o: "<i>Protocol</i>: from Greek <i>prōtokollon</i>, \"first sheet glued onto a manuscript\" (<i>prōtos</i> \"first\" + <i>kolla</i> \"glue\"). \"Conventional proper conduct\" is from 1952.", s: E + "protocol"},
+  fd: {t: "file descriptor", m: "A small non-negative integer that stands for an open file or socket inside one process. Each process has its own numbers. The values shown here (fd 3, fd 4) are examples.", o: "<i>Descriptor</i> is from <i>describe</i>: Latin <i>describere</i>, <i>de-</i> \"down\" + <i>scribere</i> \"to write\".", s: E + "describe"},
+  ephemeral: {t: "ephemeral port", m: "The random free port the kernel gives a client that never called bind(). Linux ip(7): connect() on an unbound socket binds it <q>to a random free port</q>.", o: "Greek <i>ephemeros</i>, \"lasting only a day\" (<i>epi</i> \"on\" + <i>hēmera</i> \"day\"); English from the 1560s.", s: E + "ephemeral"},
+  buffer: {t: "buffer", m: "Here: a char array that holds bytes, like <code>client_message[200]</code>. recv() fills it but does not add the '\\0' terminator.", o: "From the obsolete verb <i>buff</i>, \"make a dull sound when struck\" (Old French <i>bufe</i>, \"a blow\"): \"something that absorbs a blow\", from 1835.", s: E + "buffer"},
+  nc: {t: "nc (netcat)", m: "A tool that moves bytes between a network connection and your terminal. Without -l it behaves like a client; with -l (<q>Listen for an incoming connection</q>) like a server.", o: "net + cat. <i>cat</i> is the Unix tool to <q>concatenate and print files</q> (POSIX); <i>concatenate</i> is from Late Latin <i>concatenare</i>, <i>com-</i> + <i>catena</i>, \"chain\" (1590s).", s: E + "concatenate"},
+  any: {t: "INADDR_ANY", m: "Linux ip(7): <q>INADDR_ANY (0.0.0.0) means any address for socket binding</q>: accept connections on every network interface of this machine.", o: "IN = Internet; ADDR = address; ANY.", s: "https://man7.org/linux/man-pages/man7/ip.7.html"},
+  htons: {t: "htons()", m: "Converts a 16-bit number from host byte order to network byte order (POSIX: <q>convert values between host and network byte order</q>). Port numbers travel in network order.", o: "Read as: host to network, short.", s: "https://pubs.opengroup.org/onlinepubs/9699919799/functions/htons.html"},
+  pton: {t: "inet_pton()", m: "Converts a text address like \"127.0.0.1\" into the binary form the socket API needs.", o: "Read as: presentation to network.", s: "https://pubs.opengroup.org/onlinepubs/9699919799/functions/inet_pton.html"},
+  refused: {t: "ECONNREFUSED", m: "connect(2): <q>A connect() on a stream socket found no one listening on the remote address.</q> perror() prints \"Connection refused\".", o: "E = error; CONN(ection) REFUSED.", s: "https://man7.org/linux/man-pages/man2/connect.2.html"},
+  eagain: {t: "EAGAIN / EWOULDBLOCK", m: "The error recv() gives when SO_RCVTIMEO expires with no data. On Linux, perror() prints \"Resource temporarily unavailable\" (checked by running client.c).", o: "E = error; AGAIN: try again later.", s: "https://manpages.org/setsockopt"},
+  block: {t: "blocking", m: "A blocking call stops the calling thread inside the kernel until something happens: a connection for accept(), bytes for recv(). The process uses no CPU while it waits. In a single-threaded program like your server.c, that means the whole program waits; in a multi-threaded one, the other threads keep running.", o: "", s: "https://pubs.opengroup.org/onlinepubs/9699919799/functions/accept.html"},
+  loopback: {t: "127.0.0.1 (loopback)", m: "An address that always means \"this same machine\". Packets never leave your computer; the kernel hands them from one socket to the other.", o: "", s: "https://man7.org/linux/man-pages/man7/ip.7.html"},
+  chomp: {t: "chomp()", m: "The small helper in your code that cuts a trailing \\r and \\n, so \"hello\\n\" becomes \"hello\".", o: "", s: ""},
+  strcmp: {t: "strcmp()", m: "\"String compare\": returns 0 only if both strings are identical, byte for byte, up to their '\\0'.", o: "str(ing) + c(o)mp(are).", s: ""}
+};
+/* identifiers in code that get a tooltip */
+var CODE_TERMS = {socket: "socket", bind: "bind", listen: "listen", accept: "accept", connect: "connect", send: "send", recv: "recv", close: "close", setsockopt: "setsockopt", SO_REUSEADDR: "reuse", SO_RCVTIMEO: "rcvtimeo", SO_SNDTIMEO: "rcvtimeo", INADDR_ANY: "any", htons: "htons", inet_pton: "pton", SOCK_STREAM: "stream", chomp: "chomp", strcmp: "strcmp", recv_line: "recv"};
+
+/* ================= pixel sprites ================= */
+var MAPS = {
+  person: [
+    "....kkkkkkkk....","...khhhhhhhhk...","...khsssssshk...","...ksessssesk...",
+    "...kssssssssk...","...ksssmmsssk...","....kssssssk....",".....kkkkkk.....",
+    "...kbbbbbbbbk...","..kbbbbccbbbbk..","..kbkbbccbbkbk..","..ksbbbbbbbbsk..",
+    "...kbbbbbbbbk...","...kppppppppk...","...kppk..kppk...","...kddk..kddk..."],
+  cat: [
+    "..kk.......kk...","..kgk.....kgk...","..kggkkkkkggk...","..kgggggggggk...",
+    "..kgygggggygk...","..kggggpggggk...","...kgggggggk....","....kgggggk.....",
+    "...kgggggggk....","..kgggwwwgggk...","..kgggwwwgggk.kk","..kgggwwwgggkkgk",
+    "..kgggggggggkgk.","..kgggggggggk...","..kggk...kggk...","..kkkk...kkkk..."],
+  cap: ["...oooooo...","..oooooooo..","oooooooooooo"],
+  bow: ["rr....rr","rrrkkrrr","rr....rr"],
+  env: ["kkkkkkkkkk","kkwwwwwwkk","kwkwwwwkwk","kwwkwwkwwk","kwwwkkwwwk","kwwwwwwwwk","kkkkkkkkkk"]
+};
+var BASE = {k: "#1b1b2a", s: "#f2c29b", e: "#1b1b2a", m: "#c0645a", d: "#26263a", w: "#f4f4ec"};
+var PALS = {
+  server: {h: "#4a2c1a", b: "#2f5fb3", c: "#e04b4b", p: "#3b3f58"},
+  conn:   {h: "#4a2c1a", b: "#6cc0ff", c: "#ffffff", p: "#3b3f58"},
+  client: {h: "#ff8c2a", b: "#2e9d6a", c: "#ffd84d", p: "#344050"},
+  clientB:{h: "#b06cff", b: "#7a4fd1", c: "#ffd84d", p: "#3b3456"},
+  clientC:{h: "#ff5fa2", b: "#c2417a", c: "#ffd84d", p: "#4a2f40"},
+  dev:    {h: "#6b4bd6", b: "#4a33a8", c: "#ffcc4d", p: "#2d2466", s: "#e9b48d"},
+  cat:    {g: "#9aa0b4", y: "#ffd84d", p: "#ff8fb1"},
+  cap:    {o: "#ff8c2a"}, bow: {r: "#e04b4b"},
+  env:    {}, envCtl: {w: "#ffe08a"}, envRst: {w: "#ff8f8f"}
+};
+var spriteCache = {};
+function sprite(map, pal, ghost) {
+  var key = map + "|" + pal + "|" + (ghost ? 1 : 0);
+  if (spriteCache[key]) return spriteCache[key];
+  var rows = MAPS[map], c = document.createElement("canvas");
+  c.width = rows[0].length; c.height = rows.length;
+  var g = c.getContext("2d"), colors = Object.assign({}, BASE, PALS[pal] || {});
+  rows.forEach(function (row, y) {
+    for (var x = 0; x < row.length; x++) {
+      var ch = row[x];
+      if (ch === ".") continue;
+      g.fillStyle = ghost ? (ch === "k" ? "#55597a" : "#9da2c4") : (colors[ch] || "#ff00ff");
+      g.fillRect(x, y, 1, 1);
+    }
+  });
+  return (spriteCache[key] = c.toDataURL());
+}
+
+/* ================= scene state helpers ================= */
+function fresh() {
+  return {actors: {}, doors: {}, bench: [], term: {}, termNames: {}, areas: {L: "", R: ""},
+          dev: {x: 300, cast: "", target: null}, wire: null, compare: null, benchOn: false, rec: {}};
+}
+function A(s, id, o) { s.actors[id] = Object.assign(s.actors[id] || {id: id, badges: [], bubble: "", zz: false, fade: false}, o); return s.actors[id]; }
+function rm(s, id) { delete s.actors[id]; }
+function D(s, id, o) { s.doors[id] = Object.assign(s.doors[id] || {id: id}, o); }
+function T(s, t) { s.term[t] = s.term[t] || []; for (var i = 2; i < arguments.length; i++) s.term[t].push(arguments[i]); }
+function cast(s, x, txt, target) { s.dev.x = x; s.dev.cast = txt; s.dev.target = target; }
+function B(s, id, list) { s.actors[id].badges = list; }
+function bub(s, id, txt) { s.actors[id].bubble = txt; }
+
+/* common start states */
+function serverBuilt(s) {
+  s.areas.L = "PROCESS ./server (TERMINAL 1)";
+  A(s, "server", {sp: "person", pal: "server", x: 140, name: "SERVER (fd 3)", zz: true});
+  B(s, "server", [["♻ reuse", ""], ["LISTEN", "b-listen"], ["zzz accept()", "b-zzz"]]);
+  D(s, "srv", {x: 250, plate: ":12345", sub: "0.0.0.0"});
+  s.benchOn = true;
+  s.termNames.t1 = "TERMINAL 1 · ./server";
+  T(s, "t1", "$ ./server", "Create the socket", "Socket created", "bind done", "Waiting for incoming connections on port 12345...");
+}
+function wireTo(s, door) { s.wire = {from: "srv", to: door, label: "127.0.0.1 (LOOPBACK)"}; }
+
+/* packet paths: a:actor  d:door  w:wire-under-door  b:bench slot */
+function route(fa, fd, td, ta) { return ["a:" + fa, "d:" + fd, "w:" + fd, "w:" + td, "d:" + td, "a:" + ta]; }
+function P(label, path, kind) { return {label: label, path: path, kind: kind || "data"}; }
+var MSG = "hello from Dan's client\\n";
+
+/* ================= the scenes ================= */
+var SCENES = [
+/* ---------------------------------------------------------------- 1 */
+{
+  title: "1 · Building the server",
+  setup: function (s) {
+    s.areas.L = "PROCESS ./server (TERMINAL 1)";
+    s.areas.R = "";
+    s.termNames.t1 = "TERMINAL 1 · ./server";
+    s.dev.x = 160;
+  },
+  steps: [
+    {say: "<p>Meet the <b>developer</b>: that's you. Your <code>server.c</code> is the script the developer follows. Each call in it is a request to the [[kernel]], the part of the operating system that really owns the network.</p><p>You start the program in terminal 1.</p>",
+     code: ["server", "int main(void)"], do: function (s) { T(s, "t1", "$ ./server"); }},
+    {say: "<p><code>socket()</code> creates a [[socket]]. POSIX: it shall <q>create an unbound socket ... and return a file descriptor</q>. That number (here fd 3, an [[fd|example value]]) is how your program refers to it from now on.</p><p><code>SOCK_STREAM</code> asks for a [[stream]]: <q>sequenced, reliable, bidirectional, connection-mode byte streams</q>. The new socket is grey because it has no address yet: sockets <q>are initially unnamed</q>.</p>",
+     code: ["server", "h_socket = socket("],
+     do: function (s) {
+       cast(s, 120, "socket(AF_INET, SOCK_STREAM, 0)", "a:server");
+       A(s, "server", {sp: "person", pal: "server", x: 140, name: "SOCKET fd 3", ghost: true});
+       T(s, "t1", "Create the socket");
+     }},
+    {say: "<p>[[setsockopt]] with [[reuse|SO_REUSEADDR]]: POSIX says the rules for bind() <q>should allow reuse of local addresses</q>.</p><p>Why a server wants this becomes clear at the end of scene 2: after a connection closes, the port can stay reserved for a while ([[timewait|TIME-WAIT]]), and without this option a quick restart fails.</p>",
+     code: ["server", "SO_REUSEADDR"],
+     do: function (s) { cast(s, 120, "setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &on, ...)", "a:server"); B(s, "server", [["♻ reuse", ""]]); T(s, "t1", "Socket created"); }},
+    {say: "<p>[[bind]] gives the socket its name: address [[any|INADDR_ANY]] (0.0.0.0, any interface of this machine) and [[port]] 12345. [[htons]] converts the number to network byte order first.</p><p>A door with your number now exists in the kernel. If another program already owned 12345, bind() would fail with <q>The specified address is already in use.</q></p>",
+     code: ["server", "return bind("],
+     do: function (s) {
+       cast(s, 200, "bind(fd, {0.0.0.0, port 12345}, ...)", "d:srv");
+       A(s, "server", {ghost: false, name: "SERVER (fd 3)"});
+       D(s, "srv", {x: 250, plate: ":12345", sub: "0.0.0.0"});
+       T(s, "t1", "bind done");
+     }},
+    {say: "<p>[[listen]] turns it into a waiting socket. POSIX: it shall <q>mark a connection-mode socket ... as accepting connections</q>.</p><p>The kernel also prepares a waiting room, the listen queue. The 3 is the [[backlog]]. On Linux it is the <q>queue length for completely established sockets waiting to be accepted</q>; POSIX only calls it <q>a hint</q>.</p>",
+     code: ["server", "listen(socket_desc, 3)"],
+     do: function (s) { cast(s, 120, "listen(fd, 3)", "a:server"); B(s, "server", [["♻ reuse", ""], ["LISTEN", "b-listen"]]); s.benchOn = true; }},
+    {say: "<p>[[accept]]: <q>accept() shall block until a connection is present.</q> Your server has only one thread, and that thread stops inside accept() ([[block|blocking]]). The next line of your program doesn't run until a connection is waiting; meanwhile the process uses no CPU. The new socket doesn't exist yet: accept() creates it when it returns.</p>",
+     code: ["server", "sock = accept("],
+     do: function (s) {
+       cast(s, 120, "accept(fd, &client, &len)", "a:server");
+       A(s, "server", {zz: true}); B(s, "server", [["♻ reuse", ""], ["LISTEN", "b-listen"], ["zzz accept()", "b-zzz"]]);
+       T(s, "t1", "Waiting for incoming connections on port 12345...");
+     },
+     quiz: {q: "The server's thread is stopped inside accept(). What will make accept() return?",
+            opts: ["The developer has to call accept() again", "The kernel, once a client's connection is complete", "A timer: accept() checks for clients once a second"],
+            ok: 1,
+            why: "The kernel does the waiting. When a client's connection completes, the kernel puts it on the listen queue, and accept() returns with it. Without a client, the server would sleep forever (no timeout was set)."}},
+    {say: "<p>The server is built. Its life so far:</p><p><code>socket</code> → <code>setsockopt</code> → <code>bind</code> → <code>listen</code> → <code>accept</code> (asleep)</p><p>Next scene: the developer builds a [[client]] that wakes it.</p>",
+     code: ["server", "sock = accept("], do: function (s) { s.dev.x = 300; }}
+  ]
+},
+/* ---------------------------------------------------------------- 2 */
+{
+  title: "2 · Building the client: the first call",
+  setup: function (s) {
+    serverBuilt(s);
+    s.areas.R = "PROCESS ./client (TERMINAL 2)";
+    s.termNames.t2 = "TERMINAL 2 · ./client";
+    s.dev.x = 300;
+  },
+  steps: [
+    {say: "<p>The server sleeps in accept(). Now you run your client in terminal 2. A second process starts, with its own file descriptors.</p>",
+     code: ["client", "int main(void)"], do: function (s) { s.dev.x = 640; T(s, "t2", "$ ./client"); }},
+    {say: "<p>The client starts the same way: <code>socket()</code> gives it an unnamed socket. Its number is also fd 3, because each process numbers its own descriptors ([[fd|file descriptor]]).</p>",
+     code: ["client", "return socket(AF_INET"],
+     do: function (s) { cast(s, 680, "socket(AF_INET, SOCK_STREAM, 0)", "a:client"); A(s, "client", {sp: "person", pal: "client", x: 760, name: "SOCKET fd 3", ghost: true}); T(s, "t2", "Create the socket"); }},
+    {say: "<p>A client doesn't call bind(). It only writes down where the server is: [[pton|inet_pton()]] turns the text \"127.0.0.1\" into binary, and [[htons]] converts the port.</p><p>[[loopback|127.0.0.1]] means this same machine.</p>",
+     code: ["client", "inet_pton(AF_INET, SERVER_IP"],
+     do: function (s) { cast(s, 680, "inet_pton(AF_INET, \"127.0.0.1\", ...)", "a:client"); bub(s, "client", "server is at 127.0.0.1 : 12345"); }},
+    {say: "<p>[[connect]]. The socket has no local port, so the kernel binds it <q>to a random free port</q> (Linux ip(7)). Here it got 41366, an [[ephemeral|ephemeral port]].</p><p>Then the kernel starts the [[handshake|three-way handshake]]. Your program is now blocked inside connect().</p>",
+     code: ["client", "return connect("],
+     do: function (s) {
+       cast(s, 680, "connect(fd, {127.0.0.1, 12345}, ...)", "a:client");
+       A(s, "client", {ghost: false, name: "CLIENT (fd 3)", zz: true}); B(s, "client", [["zzz connect()", "b-zzz"]]);
+       D(s, "cli", {x: 700, plate: ":41366", sub: "ephemeral"}); wireTo(s, "cli");
+     },
+     anim: [P("SYN", route("client", "cli", "srv", "server").slice(0, 5), "ctl")]},
+    {say: "<p>[[syn|SYN]] (<q>Synchronize sequence numbers</q>) reached door 12345. The server's kernel answers with SYN+[[ack|ACK]] by itself.</p><p>Look at the server: it is still asleep. The handshake is kernel work.</p>",
+     code: ["server", "sock = accept("],
+     do: function (s) { bub(s, "server", "zzz…"); },
+     anim: [P("SYN + ACK", ["d:srv", "w:srv", "w:cli", "d:cli"], "ctl")]},
+    {say: "<p>The client's kernel sends the final ACK. The connection is established and waits on the listen queue.</p><p>connect() returns 0, so the client prints its message, although the server hasn't called anything yet.</p>",
+     code: ["client", "Successfully connected to"],
+     do: function (s) {
+       A(s, "client", {zz: false}); B(s, "client", []);
+       s.bench = [{id: "c1", text: "conn from :41366"}];
+       T(s, "t2", "Successfully connected to 127.0.0.1:12345");
+     },
+     anim: [P("ACK", ["d:cli", "w:cli", "w:srv", "b:0"], "ctl")]},
+    {say: "<p>accept() returns. POSIX: it extracts <q>the first connection on the queue</q>, creates <b>a new socket</b> and gives it a new descriptor (fd 4).</p><p>So now there are two server sockets: the listener stays at the door (<q>The original socket remains open and can accept more connections</q>), and the new one talks to this client. RFC 9293: <q>A connection is defined by a pair of sockets.</q></p>",
+     code: ["server", "Connection accepted from"],
+     do: function (s) {
+       s.bench = [];
+       A(s, "server", {zz: false}); B(s, "server", [["♻ reuse", ""], ["LISTEN", "b-listen"]]);
+       A(s, "conn", {sp: "person", pal: "conn", x: 330, name: "CONN SOCKET (fd 4)"});
+       T(s, "t1", "Connection accepted from 127.0.0.1:41366");
+     }},
+    {say: "<p>The server calls [[recv]] on the new socket: it <q>shall block until a message arrives</q>. The same single thread now waits here, on the connection socket. While it waits, nobody calls accept().</p>",
+     code: ["server", "n = (long)recv("],
+     do: function (s) { cast(s, 300, "recv(4, client_message, 199, 0)", "a:conn"); A(s, "conn", {zz: true}); B(s, "conn", [["zzz recv()", "b-zzz"]]); }},
+    {say: "<p>Meanwhile the client sets [[rcvtimeo|SO_RCVTIMEO]] (and SO_SNDTIMEO) to 20 seconds, so it won't wait forever for an answer.</p>",
+     code: ["client", "SO_RCVTIMEO"],
+     do: function (s) { cast(s, 680, "setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, 20 s)", "a:client"); B(s, "client", [["⏱ 20 s", "b-time"]]); }},
+    {say: "<p>fgets() reads your line from the keyboard. Note the <span class=nl>\\n</span> at the end: fgets keeps the Enter key.</p>",
+     code: ["client", "fgets(send_to_server"],
+     do: function (s) { T(s, "t2", "Enter the message: {you}hello from Dan's client{/you}"); bub(s, "client", "hello from Dan's client\\n"); }},
+    {say: "<p>[[send]] hands the 24 bytes to the kernel, which carries them to the other side. POSIX: success <q>does not guarantee delivery</q>; it means the kernel took the bytes. The return value is the count sent, which is why your socket_send() loops.</p>",
+     code: ["client", "n = send(h_socket"],
+     do: function (s) { cast(s, 680, "send(fd, \"hello from Dan's client\\n\", 24, 0)", "a:client"); },
+     anim: [P(MSG, route("client", "cli", "srv", "conn"))]},
+    {say: "<p>recv() wakes up and returns 24. Your code adds the '\\0' that recv() never adds, then [[chomp]] cuts the \\n.</p>",
+     code: ["server", "chomp(client_message)"],
+     do: function (s) { A(s, "conn", {zz: false}); B(s, "conn", []); bub(s, "conn", "got 24 bytes"); T(s, "t1", "Client says: hello from Dan's client"); }},
+    {say: "<p>[[strcmp]] says the strings match, so the server sends \"Hi there!\\n\". The client was blocked in recv(); now it has data.</p>",
+     code: ["server", "message = \"Hi there!"],
+     do: function (s) { cast(s, 300, "send(4, \"Hi there!\\n\", 10, 0)", "a:conn"); },
+     anim: [P("Hi there!\\n", route("conn", "srv", "cli", "client"))]},
+    {say: "<p>The client's recv() returns 10 bytes, chomp() removes the newline, and it prints the answer.</p>",
+     code: ["client", "Server response: %s"],
+     do: function (s) { B(s, "client", []); T(s, "t2", "Server response: Hi there!"); }},
+    {say: "<p>The server calls [[close]] on fd 4. POSIX: <q>close() shall cause the socket to be destroyed.</q> The connection socket leaves your program at once, but the kernel still ends the connection properly: it sends [[fin|FIN]], <q>No more data from sender</q>.</p><p>The kernel keeps a record of the connection, now in [[finwait|FIN-WAIT-1]]. The listener goes straight back to accept().</p>",
+     code: ["server", "perror(\"send failed\");", 2],
+     do: function (s) {
+       cast(s, 300, "close(4)", "a:conn"); rm(s, "conn");
+       A(s, "server", {zz: true}); B(s, "server", [["♻ reuse", ""], ["LISTEN", "b-listen"], ["zzz accept()", "b-zzz"]]);
+       s.rec = {srv: "→ :41366 FIN-WAIT-1"};
+       T(s, "t1", "Waiting for incoming connections on port 12345...");
+     },
+     anim: [P("FIN", ["d:srv", "w:srv", "w:cli", "d:cli"], "ctl")]},
+    {say: "<p>The client's kernel answers with [[ack|ACK]] by itself; the client program is busy printing the reply. Each side's record changes:</p><p>server side: [[finwait|FIN-WAIT-2]], <q>waiting for a request to end the connection from the remote TCP</q><br>client side: [[closewait|CLOSE-WAIT]], <q>waiting for a request to end the connection from the local user</q>, meaning the client <i>program</i> hasn't called close() yet.</p><p class=src>I checked these on Linux by reading the kernel's table of connections (/proc/net/tcp) after each close(): FIN_WAIT2 and CLOSE_WAIT.</p>",
+     code: ["client", "Server response: %s"],
+     do: function (s) { s.rec = {srv: "→ :41366 FIN-WAIT-2", cli: "→ :12345 CLOSE-WAIT"}; },
+     anim: [P("ACK", ["d:cli", "w:cli", "w:srv", "d:srv"], "ctl")]},
+    {say: "<p>The client calls close(). Its socket leaves the program, and its kernel sends its own FIN. The client side moves to [[lastack|LAST-ACK]]: <q>waiting for an acknowledgment of the request to end the connection that was previously sent to the remote TCP</q>.</p>",
+     code: ["client", "close(h_socket);\n    return 0;"],
+     do: function (s) { cast(s, 680, "close(fd)", "a:client"); rm(s, "client"); T(s, "t2", "$"); s.rec = {srv: "→ :41366 FIN-WAIT-2", cli: "→ :12345 LAST-ACK"}; },
+     anim: [P("FIN", ["d:cli", "w:cli", "w:srv", "d:srv"], "ctl")]},
+    {say: "<p>The server's kernel sends the <b>final ACK</b>. When it arrives, the client side is finished: its record and its ephemeral port 41366 are released.</p><p>The server side closed first, so it enters [[timewait|TIME-WAIT]]: <q>waiting for enough time to pass to be sure the remote TCP received the acknowledgment of its request to end the connection</q>. RFC 9293: it <q>MUST linger in the TIME-WAIT state for a time 2xMSL</q>. Linux uses 60 seconds.</p><p><b>Why stay?</b> If this final ACK got lost, the client's kernel would resend its FIN, and the server's kernel must still remember the connection to acknowledge it again.</p>",
+     code: ["server", "perror(\"send failed\");", 2],
+     do: function (s) { s.rec = {srv: "→ :41366 TIME-WAIT (60 s on Linux)"}; D(s, "cli", {sub: "closed"}); },
+     anim: [P("ACK", ["d:srv", "w:srv", "w:cli", "d:cli"], "ctl")]},
+    {say: "<p>While the TIME-WAIT record lives, it still marks port 12345 as in use. The running server doesn't mind, but a server <i>restarted</i> within those 60 seconds can't bind() the port, unless it set [[reuse|SO_REUSEADDR]] (scene 1). I tested it: without the option, the restart failed with <q>Address already in use</q>; with it, bind() succeeded.</p><p><b>Lifecycles:</b><br>server: <code>socket → bind → listen → accept → recv → send → close</code> → back to accept<br>client: <code>socket → connect → send → recv → close</code><br>closing: FIN, ACK, FIN, ACK, then TIME-WAIT on the side that closed first.</p>",
+     code: ["server", "SO_REUSEADDR"],
+     do: function (s) { delete s.doors.cli; s.wire = null; }}
+  ]
+},
+/* ---------------------------------------------------------------- 3 */
+{
+  title: "3 · Nobody home: Connection refused",
+  setup: function (s) {
+    s.areas.L = "";
+    s.areas.R = "PROCESS ./client (TERMINAL 2)";
+    s.termNames.t1 = "TERMINAL 1 · (server not started)";
+    s.termNames.t2 = "TERMINAL 2 · ./client";
+    D(s, "srv", {x: 250, plate: ":12345", sub: "nobody listening", closed: true});
+    s.dev.x = 640;
+  },
+  steps: [
+    {say: "<p>This time terminal 1 is empty: the server isn't running. Port 12345 is just an unused number in the kernel.</p><p>You run the client anyway.</p>",
+     code: ["client", "int main(void)"],
+     do: function (s) { T(s, "t2", "$ ./client", "Create the socket"); A(s, "client", {sp: "person", pal: "client", x: 760, name: "SOCKET fd 3", ghost: true}); }},
+    {say: "<p>connect(): the kernel picks an ephemeral port and sends SYN to port 12345.</p>",
+     code: ["client", "return connect("],
+     do: function (s) {
+       cast(s, 680, "connect(fd, {127.0.0.1, 12345}, ...)", "a:client");
+       A(s, "client", {ghost: false, name: "CLIENT (fd 3)", zz: true}); B(s, "client", [["zzz connect()", "b-zzz"]]);
+       D(s, "cli", {x: 700, plate: ":41370", sub: "ephemeral"}); wireTo(s, "cli");
+     },
+     anim: [P("SYN", route("client", "cli", "srv", "server").slice(0, 5), "ctl")],
+     quiz: {q: "Nobody listens on port 12345. What does connect() do?",
+            opts: ["Waits until a server starts on that port", "Fails at once with \"Connection refused\"", "Succeeds, and send() fails later"],
+            ok: 1,
+            why: "RFC 9293: if the connection does not exist (CLOSED), <q>a reset is sent</q>. The client's kernel turns that RST into the error ECONNREFUSED, so connect() returns -1 immediately."}},
+    {say: "<p>The kernel answers for the missing server with [[rst|RST]]. RFC 9293: <q>A SYN segment that does not match an existing connection is rejected by this means.</q></p><p>connect() returns -1 with [[refused|ECONNREFUSED]]: it <q>found no one listening on the remote address</q>.</p><p class=src>Over a real network a firewall may drop the SYN silently instead. Then connect() keeps retrying and finally fails with ETIMEDOUT, <q>Timeout while attempting connection</q> (connect(2)).</p>",
+     code: ["client", "perror(\"connect\")"],
+     do: function (s) {
+       A(s, "client", {zz: false}); B(s, "client", [["ECONNREFUSED", "b-err"]]);
+       T(s, "t2", "{er}connect: Connection refused{/er}");
+     },
+     anim: [P("RST", ["d:srv", "w:srv", "w:cli", "d:cli", "a:client"], "rst")]},
+    {say: "<p>You met this earlier with nc on port 19. Both addresses that <code>localhost</code> resolves to were refused, because nothing was listening yet:</p>",
+     code: null,
+     do: function (s) {
+       rm(s, "client"); delete s.doors.cli; s.wire = null;
+       T(s, "t2", "$", "$ nc -v localhost 19", "{er}nc: connect to localhost (::1) port 19 (tcp) failed: Connection refused{/er}", "{er}nc: connect to localhost (127.0.0.1) port 19 (tcp) failed: Connection refused{/er}");
+     }},
+    {say: "<p><b>Rule:</b> the server must be listening before a client connects. \"Connection refused\" means the machine answered, but nothing was listening on that port.</p>",
+     code: null, do: function () {}}
+  ]
+},
+/* ---------------------------------------------------------------- 4 */
+{
+  title: "4 · nc plays the client",
+  setup: function (s) {
+    serverBuilt(s);
+    s.areas.R = "PROCESS nc 127.0.0.1 12345 (TERMINAL 2)";
+    s.termNames.t2 = "TERMINAL 2 · nc";
+    s.dev.x = 640;
+  },
+  steps: [
+    {say: "<p>Your server is waiting. Instead of client.c, you connect with [[nc]] and no <code>-l</code>. Without -l, nc does what a client does: socket(), then connect().</p>",
+     code: ["ncClient", "fd = socket("],
+     do: function (s) { T(s, "t2", "$ nc 127.0.0.1 12345"); A(s, "nc", {sp: "cat", pal: "cat", x: 760, name: "nc (CLIENT MASK)", hat: "cap"}); }},
+    {say: "<p>Same three-way handshake, same accept(): the server can't tell nc from your client. It only sees a TCP connection.</p>",
+     code: ["ncClient", "connect(fd"],
+     do: function (s) {
+       D(s, "cli", {x: 700, plate: ":41380", sub: "ephemeral"}); wireTo(s, "cli");
+       A(s, "server", {zz: false}); B(s, "server", [["♻ reuse", ""], ["LISTEN", "b-listen"]]);
+       A(s, "conn", {sp: "person", pal: "conn", x: 330, name: "CONN SOCKET (fd 4)", zz: true}); B(s, "conn", [["zzz recv()", "b-zzz"]]);
+       T(s, "t1", "Connection accepted from 127.0.0.1:41380");
+     },
+     anim: [P("SYN", ["d:cli", "w:cli", "w:srv", "d:srv"], "ctl"), P("SYN + ACK", ["d:srv", "w:srv", "w:cli", "d:cli"], "ctl"), P("ACK", ["d:cli", "w:cli", "w:srv", "d:srv"], "ctl")]},
+    {say: "<p>You type the message and press Enter. The terminal gives nc the whole line, <b>including</b> <span class=nl>\\n</span>, and nc sends exactly those bytes.</p>",
+     code: ["ncClient", "keyboard line"],
+     do: function (s) { T(s, "t2", "{you}hello from Dan's client{/you}"); },
+     anim: [P(MSG, route("nc", "cli", "srv", "conn"))],
+     quiz: {q: "Your FIRST server.c had no chomp(). It compared strcmp(p_message, client_message) right after recv(). What did it reply?",
+            opts: ["Hi there!", "Invalid message!", "Nothing: it waits for more bytes"],
+            ok: 1,
+            why: "The received bytes are \"hello from Dan's client\\n\". strcmp() compares byte by byte, up to the '\\0', and the expected string ends where the received one still has '\\n'. Not equal, so: Invalid message!"}},
+    {say: "<p>Here are the two strings byte by byte. Only the last byte differs: <span class=nl>\\n</span>. Your current server calls chomp() before strcmp(), so it matches.</p>",
+     code: ["server", "chomp(client_message)"],
+     do: function (s) { A(s, "conn", {zz: false}); B(s, "conn", []); T(s, "t1", "Client says: hello from Dan's client"); s.compare = true; }},
+    {say: "<p>The server replies, then closes fd 4. nc prints the reply, gets FIN (recv() returns 0), and exits.</p>",
+     code: ["server", "perror(\"send failed\");", 2],
+     do: function (s) {
+       rm(s, "conn"); A(s, "server", {zz: true}); B(s, "server", [["♻ reuse", ""], ["LISTEN", "b-listen"], ["zzz accept()", "b-zzz"]]);
+       rm(s, "nc"); delete s.doors.cli; s.wire = null;
+       T(s, "t2", "Hi there!", "$"); T(s, "t1", "Waiting for incoming connections on port 12345...");
+     },
+     anim: [P("Hi there!\\n", route("conn", "srv", "cli", "nc")), P("FIN", ["w:srv", "w:cli", "d:cli"], "ctl")]},
+    {say: "<p><b>Why test like this?</b> nc shows you the raw bytes, with nothing hidden. The \\n bug was invisible in your own programs' output and obvious once nc was the client.</p>",
+     code: null, do: function () {}}
+  ]
+},
+/* ---------------------------------------------------------------- 5 */
+{
+  title: "5 · nc plays the server (you type the reply)",
+  setup: function (s) {
+    s.areas.L = "PROCESS nc -l 127.0.0.1 12345 (TERMINAL 1)";
+    s.areas.R = "PROCESS ./client (TERMINAL 2)";
+    s.termNames.t1 = "TERMINAL 1 · nc -l";
+    s.termNames.t2 = "TERMINAL 2 · ./client";
+    s.dev.x = 160;
+  },
+  steps: [
+    {say: "<p>Now nc wears the server mask. <code>-l</code>: <q>Listen for an incoming connection rather than initiating a connection to a remote host.</q> It makes the same calls as your server: socket, bind, listen, accept.</p>",
+     code: ["ncServer", "conn = accept("],
+     do: function (s) {
+       T(s, "t1", "$ nc -l 127.0.0.1 12345");
+       A(s, "nc", {sp: "cat", pal: "cat", x: 140, name: "nc -l (SERVER MASK)", hat: "bow", zz: true});
+       B(s, "nc", [["LISTEN", "b-listen"], ["zzz accept()", "b-zzz"]]);
+       D(s, "srv", {x: 250, plate: ":12345", sub: "127.0.0.1"}); s.benchOn = true;
+     }},
+    {say: "<p>Your client runs: socket, connect, handshake. nc's accept() returns.</p>",
+     code: ["client", "return connect("],
+     do: function (s) {
+       s.dev.x = 640;
+       A(s, "client", {sp: "person", pal: "client", x: 760, name: "CLIENT (fd 3)"});
+       D(s, "cli", {x: 700, plate: ":41390", sub: "ephemeral"}); wireTo(s, "cli");
+       A(s, "nc", {zz: false}); B(s, "nc", [["LISTEN", "b-listen"]]);
+       T(s, "t2", "$ ./client", "Create the socket", "Successfully connected to 127.0.0.1:12345");
+     },
+     anim: [P("SYN", ["d:cli", "w:cli", "w:srv", "d:srv"], "ctl"), P("SYN + ACK", ["d:srv", "w:srv", "w:cli", "d:cli"], "ctl"), P("ACK", ["d:cli", "w:cli", "w:srv", "d:srv"], "ctl")]},
+    {say: "<p>You type <code>test</code> in the client. nc prints whatever bytes arrive, so \"test\" appears in terminal 1. The client now waits in recv(), with its 20-second timeout running.</p>",
+     code: ["client", "read_size = socket_receive("],
+     do: function (s) {
+       T(s, "t2", "Enter the message: {you}test{/you}"); T(s, "t1", "test");
+       A(s, "client", {zz: true}); B(s, "client", [["⏱ 20 s", "b-time"], ["zzz recv()", "b-zzz"]]);
+     },
+     anim: [P("test\\n", route("client", "cli", "srv", "nc"))]},
+    {say: "<p><b>You are the server now.</b> Type a reply in the box below as if you were typing in terminal 1, then press Send. nc sends your line, including the Enter.</p>",
+     code: ["ncServer", "keyboard line"],
+     input: {key: "reply", label: "Your reply (typed into terminal 1, where nc -l runs):", def: "hello back"},
+     do: function () {}},
+    {say: "<p>The client's recv() returns your bytes. After chomp() the client prints them. The client didn't know (or care) that a person was answering.</p>",
+     code: ["client", "Server response: %s"],
+     do: function (s) {
+       var r = INPUTS.reply || "hello back";
+       T(s, "t1", "{you}" + r + "{/you}");
+       A(s, "client", {zz: false}); B(s, "client", []);
+       T(s, "t2", "Server response: " + r);
+     },
+     anim: [P(function () { return (INPUTS.reply || "hello back") + "\\n"; }, route("nc", "srv", "cli", "client"))]},
+    {say: "<p>The client closes and sends FIN. nc's recv() returns 0, and nc exits. It would keep listening only with <code>-k</code>: <q>When a connection is completed, listen for another one.</q></p>",
+     code: ["ncServer", "close(conn)"],
+     do: function (s) { rm(s, "client"); rm(s, "nc"); delete s.doors.cli; delete s.doors.srv; s.wire = null; s.benchOn = false; T(s, "t2", "$"); T(s, "t1", "$"); },
+     anim: [P("FIN", ["d:cli", "w:cli", "w:srv", "d:srv"], "ctl")]}
+  ]
+},
+/* ---------------------------------------------------------------- 6 */
+{
+  title: "6 · The silent server: timeouts",
+  setup: function (s) {
+    s.areas.L = "PROCESS nc -l 127.0.0.1 12345 (TERMINAL 1)";
+    s.areas.R = "PROCESS ./client (TERMINAL 2)";
+    s.termNames.t1 = "TERMINAL 1 · nc -l";
+    s.termNames.t2 = "TERMINAL 2 · ./client";
+    A(s, "nc", {sp: "cat", pal: "cat", x: 140, name: "nc -l (SERVER MASK)", hat: "bow"});
+    B(s, "nc", [["LISTEN", "b-listen"]]);
+    D(s, "srv", {x: 250, plate: ":12345", sub: "127.0.0.1"}); s.benchOn = true;
+    A(s, "client", {sp: "person", pal: "client", x: 760, name: "CLIENT (fd 3)"});
+    B(s, "client", [["⏱ 20 s", "b-time"]]);
+    D(s, "cli", {x: 700, plate: ":41400", sub: "ephemeral"}); wireTo(s, "cli");
+    T(s, "t1", "$ nc -l 127.0.0.1 12345");
+    T(s, "t2", "$ ./client", "Create the socket", "Successfully connected to 127.0.0.1:12345");
+    s.dev.x = 640;
+  },
+  steps: [
+    {say: "<p>Same setup as scene 5, already connected. The client sends <code>test</code> and blocks in recv().</p>",
+     code: ["client", "read_size = socket_receive("],
+     do: function (s) { T(s, "t2", "Enter the message: {you}test{/you}"); T(s, "t1", "test"); A(s, "client", {zz: true}); B(s, "client", [["⏱ 20 s", "b-time"], ["zzz recv()", "b-zzz"]]); },
+     anim: [P("test\\n", route("client", "cli", "srv", "nc"))],
+     quiz: {q: "This time you don't answer in nc. When the 20 seconds pass, what does recv() return?",
+            opts: ["0", "-1, with errno EAGAIN or EWOULDBLOCK", "An empty string \"\""],
+            ok: 1,
+            why: "POSIX (SO_RCVTIMEO): the call shall <q>return with a partial count or errno set to [EAGAIN] or [EWOULDBLOCK] if no data is received</q>. 0 means something else: <q>the peer has performed an orderly shutdown</q>."}},
+    {say: "<p>The timer runs out. [[rcvtimeo|SO_RCVTIMEO]] makes recv() give up and return -1 with [[eagain|EAGAIN]]. Your client checks for <code>read_size &lt; 0</code> and calls perror().</p>",
+     code: ["client", "perror(\"recv\")"],
+     do: function (s) { A(s, "client", {zz: false}); B(s, "client", [["⏱ 0 s", "b-err"]]); T(s, "t2", "{er}recv: Resource temporarily unavailable{/er}"); },
+     anim: [{count: "client"}]},
+    {say: "<p>The client closes and exits. nc sees FIN and exits too.</p><p><b>Why it matters:</b> without a timeout, a client facing a stuck server would wait forever. Learn the difference between the two results: <b>0</b> = the other side closed politely; <b>-1 + EAGAIN</b> = nothing arrived in time.</p>",
+     code: ["client", "if (read_size == 0)"],
+     do: function (s) { rm(s, "client"); rm(s, "nc"); delete s.doors.cli; delete s.doors.srv; s.wire = null; s.benchOn = false; T(s, "t2", "$"); T(s, "t1", "$"); },
+     anim: [P("FIN", ["d:cli", "w:cli", "w:srv", "d:srv"], "ctl")]}
+  ]
+},
+/* ---------------------------------------------------------------- 7 */
+{
+  title: "7 · Half a message: TCP is a byte stream",
+  setup: function (s) {
+    serverBuilt(s);
+    s.areas.R = "PROCESS ./client (TERMINAL 2)";
+    s.termNames.t2 = "TERMINAL 2 · ./client";
+    A(s, "server", {zz: false}); B(s, "server", [["♻ reuse", ""], ["LISTEN", "b-listen"]]);
+    A(s, "conn", {sp: "person", pal: "conn", x: 330, name: "CONN SOCKET (fd 4)", zz: true}); B(s, "conn", [["zzz recv()", "b-zzz"]]);
+    A(s, "client", {sp: "person", pal: "client", x: 760, name: "CLIENT (fd 3)"});
+    D(s, "cli", {x: 700, plate: ":41410", sub: "ephemeral"}); wireTo(s, "cli");
+    T(s, "t1", "Connection accepted from 127.0.0.1:41410");
+    T(s, "t2", "$ ./client", "Create the socket", "Successfully connected to 127.0.0.1:12345");
+    s.dev.x = 640;
+  },
+  steps: [
+    {say: "<p>Connected, and the server waits in recv(). TCP delivers a [[stream]] of bytes, not messages. RFC 9293: TCP <q>guarantees no correlation between the boundaries of TCP segments sent and received</q>. POSIX: for SOCK_STREAM, <q>message boundaries shall be ignored</q>.</p><p>Over a real network one send() can arrive as two pieces. On localhost it's rare, so here we show it happening.</p>",
+     code: ["client", "n = send(h_socket"],
+     do: function (s) { T(s, "t2", "Enter the message: {you}hello from Dan's client{/you}"); },
+     anim: [P("hello from ", route("client", "cli", "srv", "conn"))],
+     quiz: {q: "Only the first piece, \"hello from \", has arrived. What does your server's single recv() do?",
+            opts: ["Waits for the rest, then replies \"Hi there!\"", "Returns 11 bytes, and the server replies \"Invalid message!\"", "Crashes"],
+            ok: 1,
+            why: "POSIX: <q>data shall be returned to the user as soon as it becomes available</q>. recv() returns what has arrived: 11 bytes. Your server compares \"hello from \" and replies Invalid message!"}},
+    {say: "<p>recv() returned 11 bytes. The server judged half a message.</p>",
+     code: ["server", "message = \"Invalid message!"],
+     do: function (s) { A(s, "conn", {zz: false}); B(s, "conn", []); bub(s, "conn", "got 11 bytes: \"hello from \""); T(s, "t1", "Client says: hello from "); },
+     anim: [P("Invalid message!\\n", route("conn", "srv", "cli", "client"))]},
+    {say: "<p>The server closes its connection. The rest of the message arrives too late: nobody on that connection reads it any more.</p>",
+     code: ["server", "perror(\"send failed\");", 2],
+     do: function (s) {
+       rm(s, "conn"); A(s, "server", {zz: true}); B(s, "server", [["♻ reuse", ""], ["LISTEN", "b-listen"], ["zzz accept()", "b-zzz"]]);
+       T(s, "t2", "Server response: Invalid message!"); T(s, "t1", "Waiting for incoming connections on port 12345...");
+     },
+     anim: [P("Dan's server\\n", route("client", "cli", "srv", "server").slice(0, 5))]},
+    {say: "<p><b>The fix:</b> keep calling recv() until the line's <span class=nl>\\n</span> has arrived, the buffer is full, or recv() returns 0. In the code panel there's a C90 <code>recv_line()</code>. I tested it with a message sent in two pieces: one recv() got 11 bytes, and the loop collected the rest.</p><p>Then replace the single recv() in server.c with <code>n = recv_line(sock, client_message, sizeof client_message);</code>.</p>",
+     code: ["fix", "while (used < size - 1)"],
+     do: function (s) { rm(s, "client"); delete s.doors.cli; s.wire = null; T(s, "t2", "$"); }}
+  ]
+},
+/* ---------------------------------------------------------------- 8 */
+{
+  title: "8 · The busy server: one client at a time",
+  setup: function (s) {
+    serverBuilt(s);
+    s.areas.R = "THREE CLIENTS (TERMINALS 2, 3, 4)";
+    s.termNames.t2 = "TERMINAL 2 · nc (you, silent)";
+    s.termNames.t3 = "TERMINAL 3 · ./client (B)";
+    s.termNames.t4 = "TERMINAL 4 · ./client (C)";
+    s.dev.x = 640;
+  },
+  steps: [
+    {say: "<p>Your server serves one client at a time: accept, recv, send, close, repeat. Watch what that means with three clients.</p><p>First you connect with nc and type nothing. The server accepts and blocks in recv(), waiting for you.</p>",
+     code: ["server", "n = (long)recv("],
+     do: function (s) {
+       A(s, "nc", {sp: "cat", pal: "cat", x: 590, name: "nc (YOU)", hat: "cap"});
+       D(s, "cA", {x: 590, plate: ":41420", sub: ""}); wireTo(s, "cA");
+       A(s, "server", {zz: false}); B(s, "server", [["♻ reuse", ""], ["LISTEN", "b-listen"]]);
+       A(s, "conn", {sp: "person", pal: "conn", x: 330, name: "CONN fd 4 → nc", zz: true}); B(s, "conn", [["zzz recv()", "b-zzz"]]);
+       T(s, "t2", "$ nc 127.0.0.1 12345"); T(s, "t1", "Connection accepted from 127.0.0.1:41420");
+     },
+     anim: [P("SYN · SYN+ACK · ACK", ["d:cA", "w:cA", "w:srv", "d:srv"], "ctl")]},
+    {say: "<p>Client B starts. The handshake is kernel work, so it completes, and B's connection waits on the listen queue. B's connect() returns 0 and B sends its message, which waits in the kernel too.</p><p>The server process hasn't noticed: it's still stuck in recv() for you. (Linux listen(2): the backlog queue holds <q>completely established sockets waiting to be accepted</q>.)</p>",
+     code: ["client", "Successfully connected to"],
+     do: function (s) {
+       A(s, "cB", {sp: "person", pal: "clientB", x: 720, name: "CLIENT B", zz: true}); B(s, "cB", [["⏱ 20 s", "b-time"], ["zzz recv()", "b-zzz"]]);
+       D(s, "cB", {x: 720, plate: ":41424", sub: ""});
+       s.bench = [{id: "B", text: "conn :41424 + 24 bytes"}];
+       T(s, "t3", "$ ./client", "Create the socket", "Successfully connected to 127.0.0.1:12345", "Enter the message: {you}hello from Dan's client{/you}");
+     },
+     anim: [P("SYN · SYN+ACK · ACK", ["d:cB", "w:cB", "w:srv", "b:0"], "ctl")]},
+    {say: "<p>Client C does the same: it is connected and waiting, and a second connection sits in the queue.</p><p>If more clients arrived than the queue holds, Linux listen(2) says a client <q>may receive an error with an indication of ECONNREFUSED</q>, or its request <q>may be ignored so that a later reattempt at connection succeeds</q>.</p>",
+     code: ["server", "listen(socket_desc, 3)"],
+     do: function (s) {
+       A(s, "cC", {sp: "person", pal: "clientC", x: 850, name: "CLIENT C", zz: true}); B(s, "cC", [["⏱ 20 s", "b-time"], ["zzz recv()", "b-zzz"]]);
+       D(s, "cC", {x: 850, plate: ":41428", sub: ""});
+       s.bench = [{id: "B", text: "conn :41424 + 24 bytes"}, {id: "C", text: "conn :41428 + 24 bytes"}];
+       T(s, "t4", "$ ./client", "Create the socket", "Successfully connected to 127.0.0.1:12345", "Enter the message: {you}hello from Dan's client{/you}");
+     },
+     anim: [P("SYN · SYN+ACK · ACK", ["d:cC", "w:cC", "w:srv", "b:1"], "ctl")]},
+    {say: "<p>20 seconds pass. You still haven't typed. B's timeout fires and B gives up, although its connect() had succeeded. I reproduced this on Linux: B printed \"Successfully connected\", then after 20 s the recv error.</p>",
+     code: ["client", "perror(\"recv\")"],
+     do: function (s) {
+       A(s, "cB", {zz: false, fade: true}); B(s, "cB", [["⏱ 0 s", "b-err"]]);
+       s.bench[0].dead = true;
+       T(s, "t3", "{er}recv: Resource temporarily unavailable{/er}", "$");
+     },
+     anim: [{count: "cB"}]},
+    {say: "<p>Finally you type <code>hi</code> in nc. The server's recv() returns, and it replies \"Invalid message!\".</p>",
+     code: ["server", "message = \"Invalid message!"],
+     do: function (s) {
+       T(s, "t2", "{you}hi{/you}", "Invalid message!");
+       A(s, "conn", {zz: false}); B(s, "conn", []);
+       T(s, "t1", "Client says: hi");
+     },
+     anim: [P("hi\\n", route("nc", "cA", "srv", "conn")), P("Invalid message!\\n", route("conn", "srv", "cA", "nc"))]},
+    {say: "<p>The server closes your connection (nc exits) and goes back to accept(), which immediately takes the next queued connection: B's. B's bytes had been waiting in the kernel all along, so the server reads them and replies. But B gave up long ago.</p>",
+     code: ["server", "sock = accept("],
+     do: function (s) {
+       T(s, "t2", "$");
+       rm(s, "nc"); delete s.doors.cA;
+       s.bench = [{id: "C", text: "conn :41428 + 24 bytes"}];
+       A(s, "conn", {name: "CONN fd 4 → B (gone)"});
+       rm(s, "cB"); delete s.doors.cB;
+       T(s, "t1", "Waiting for incoming connections on port 12345...", "Connection accepted from 127.0.0.1:41424", "Client says: hello from Dan's client");
+       wireTo(s, "cC");
+     }},
+    {say: "<p>Then it's C's turn. C's 20 seconds started a little later than B's, so in this run C is still waiting, and it finally gets its answer.</p>",
+     code: ["server", "message = \"Hi there!"],
+     do: function (s) {
+       s.bench = [];
+       A(s, "conn", {name: "CONN fd 4 → C"});
+       A(s, "cC", {zz: false}); B(s, "cC", []);
+       T(s, "t1", "Waiting for incoming connections on port 12345...", "Connection accepted from 127.0.0.1:41428", "Client says: hello from Dan's client", "Waiting for incoming connections on port 12345...");
+       T(s, "t4", "Server response: Hi there!", "$");
+     },
+     anim: [P("Hi there!\\n", route("conn", "srv", "cC", "cC"))]},
+    {say: "<p><b>The lesson:</b> one slow or silent client blocked everyone, because a single process can wait in only one recv() at a time.</p><p>Real servers fix it with tools you already know: a timeout on the accepted socket (SO_RCVTIMEO), <code>fork()</code> a child per client, a thread per client (with a mutex around shared data), or <code>poll()</code> to watch many sockets in one loop.</p><p>That's the end of the play. Your server is ready to grow into the quiz server.</p>",
+     code: ["server", "for (;;)"],
+     do: function (s) { rm(s, "conn"); rm(s, "cC"); delete s.doors.cC; s.wire = null; A(s, "server", {zz: true}); B(s, "server", [["♻ reuse", ""], ["LISTEN", "b-listen"], ["zzz accept()", "b-zzz"]]); }}
+  ]
+}
+];
+
+/* ================= engine ================= */
+var cur = {scene: 0, step: -1}, INPUTS = {}, ANSWERED = {}, playing = false, playTimer = null, doneScenes = {};
+var $ = function (id) { return document.getElementById(id); };
+var stage = $("stage"), layer = $("layer");
+
+function stateAt(si, k) {
+  var sc = SCENES[si], s = fresh();
+  sc.setup(s);
+  for (var i = 0; i <= k; i++) {
+    for (var id in s.actors) s.actors[id].bubble = "";
+    s.dev.cast = ""; s.dev.target = null; s.compare = null;
+    sc.steps[i].do(s);
+  }
+  return s;
+}
+
+function esc(t) { return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+function showNL(t) { return esc(t).replace(/\\n/g, "<span class=nl>\\n</span>"); }
+function terms(html) {
+  return html.replace(/\[\[([a-z]+)(?:\|([^\]]+))?\]\]/g, function (_, k, shown) {
+    var g = G[k]; if (!g) return shown || k;
+    return '<span class="term" tabindex="0" data-k="' + k + '">' + (shown || g.t) + "</span>";
+  });
+}
+
+/* ---- positions ---- */
+function pt(s, ref) {
+  var p = ref.split(":"), kind = p[0], id = p[1];
+  if (kind === "a") { var a = s.actors[id]; return a ? [a.x, 250] : [480, 250]; }
+  if (kind === "d") { var d = s.doors[id]; return d ? [d.x, 352] : [480, 352]; }
+  if (kind === "w") { var w = s.doors[id]; return w ? [w.x, 412] : [480, 412]; }
+  if (kind === "b") { return [62 + (+id) * 60, 372]; }
+  return [480, 250];
+}
+
+/* ---- render the stage ---- */
+function renderStage(s) {
+  $("areaL").querySelector(".lbl").textContent = s.areas.L || "(NO PROCESS)";
+  $("areaR").querySelector(".lbl").textContent = s.areas.R || "(NO PROCESS)";
+  $("areaL").classList.toggle("off", !s.areas.L);
+  $("areaR").classList.toggle("off", !s.areas.R);
+  $("bench").style.display = s.benchOn ? "block" : "none";
+  var bh = '<div class="lbl">LISTEN QUEUE (BACKLOG)</div>';
+  s.bench.forEach(function (t, i) { bh += '<div class="tok' + (t.dead ? " dead" : "") + '" style="left:' + (8 + i * 60) + 'px">' + esc(t.text) + "</div>"; });
+  $("bench").innerHTML = bh;
+
+  /* wire */
+  if (s.wire && s.doors[s.wire.from] && s.doors[s.wire.to]) {
+    var x1 = s.doors[s.wire.from].x, x2 = s.doors[s.wire.to].x;
+    var xs = Object.keys(s.doors).map(function (k) { return s.doors[k].x; });
+    var lo = Math.min.apply(null, xs.concat([x1])), hi = Math.max.apply(null, xs.concat([x2]));
+    $("wire").style.display = "block"; $("wire").style.left = lo + "px"; $("wire").style.width = (hi - lo) + "px";
+    $("wireLbl").style.display = "block"; $("wireLbl").style.left = (lo + 50) + "px"; $("wireLbl").textContent = s.wire.label;
+  } else { $("wire").style.display = "none"; $("wireLbl").style.display = "none"; }
+
+  /* doors and actors are kept as persistent elements so movement animates */
+  sync("door", s.doors, function (el, d) {
+    el.className = "door" + (d.closed ? " closed" : "");
+    el.style.left = (d.x - 23) + "px";
+    el.innerHTML = '<div class="plate">' + esc(d.plate) + '</div><div class="knob"></div>' + (d.sub ? '<div class="sub">' + esc(d.sub) + "</div>" : "");
+  });
+  sync("actor", s.actors, function (el, a) {
+    el.className = "actor" + (a.zz ? " zz" : "") + (a.fade ? " fade" : "");
+    el.style.left = (a.x - 48) + "px";
+    var h = '<img class="spr" alt="" src="' + sprite(a.sp, a.pal, a.ghost) + '">';
+    if (a.hat === "cap") h += '<img class="hat" alt="" src="' + sprite("cap", "cap") + '" style="left:18px;top:44px;width:60px;height:15px">';
+    if (a.hat === "bow") h += '<img class="hat" alt="" src="' + sprite("bow", "bow") + '" style="left:28px;top:94px;width:40px;height:15px">';
+    if (a.zz) h += '<div class="zfly">z</div>';
+    h += '<div class="badges">' + (a.badges || []).map(function (b) { return '<span class="badge ' + b[1] + '">' + esc(b[0]) + "</span>"; }).join("") + "</div>";
+    if (a.bubble) h += '<div class="bubble">' + showNL(a.bubble) + "</div>";
+    h += '<div class="name">' + esc(a.name || "") + "</div>";
+    el.innerHTML = h;
+  });
+
+  /* developer, cast label and beam */
+  var dev = $("dev");
+  dev.querySelector("img").src = sprite("person", "dev");
+  dev.style.left = (s.dev.x - 32) + "px";
+  var castEl = $("cast"), beam = $("beam");
+  if (s.dev.cast) {
+    castEl.style.display = "block"; castEl.textContent = s.dev.cast;
+    var left = s.dev.x + 40; if (left + castEl.offsetWidth > 950) left = Math.max(8, s.dev.x - 40 - castEl.offsetWidth);
+    castEl.style.left = left + "px";
+  } else castEl.style.display = "none";
+  if (s.dev.target) {
+    var tp = s.dev.target.charAt(0) === "d" ? pt(s, s.dev.target) : pt(s, s.dev.target);
+    var tx = tp[0], ty = s.dev.target.charAt(0) === "d" ? 322 : 200;
+    var fx = s.dev.x, fy = 80, dx = tx - fx, dy = ty - fy;
+    beam.style.display = "block"; beam.style.left = fx + "px"; beam.style.top = fy + "px";
+    beam.style.width = Math.sqrt(dx * dx + dy * dy) + "px";
+    beam.style.transform = "rotate(" + Math.atan2(dy, dx) + "rad)";
+  } else beam.style.display = "none";
+
+  /* kernel-side connection records (TCP states) */
+  var rh = "";
+  Object.keys(s.rec || {}).forEach(function (id) {
+    var d = s.doors[id], r = s.rec[id]; if (!d || !r) return;
+    var right = id !== "srv";
+    rh += '<div class="rec" style="left:' + (right ? d.x - 30 : d.x + 30) + 'px;' + (right ? "transform:translateX(-100%)" : "") + '"><small>KERNEL RECORD</small>' + esc(r) + "</div>";
+  });
+  $("recs").innerHTML = rh;
+
+  /* byte comparison box (scene 4) */
+  var cmp = $("compare");
+  if (s.compare) {
+    var got = "hello from Dan's client\n", want = "hello from Dan's client";
+    var cell = function (ch, bad) { return '<span class="c' + (bad ? " bad" : "") + '">' + (ch === "\n" ? "\\n" : ch === " " ? "&nbsp;" : ch === "\0" ? "\\0" : esc(ch)) + "</span>"; };
+    var r1 = "", r2 = "";
+    for (var i = 0; i < got.length; i++) {
+      var g1 = i < got.length ? got[i] : "\0", g2 = i < want.length ? want[i] : "\0";
+      r1 += cell(g1, g1 !== g2); r2 += cell(g2, g1 !== g2);
+    }
+    cmp.innerHTML = '<div class="row"><b>received bytes</b>' + r1 + '</div><div class="row"><b>p_message</b>' + r2 +
+      '</div><div class="note">strcmp() stops at the first different byte: \'\\n\' vs \'\\0\', so the strings differ. chomp() removes the \\n first.</div>';
+    cmp.style.display = "block";
+  } else cmp.style.display = "none";
+}
+function sync(cls, map, paint) {
+  var have = {};
+  Array.prototype.forEach.call(layer.querySelectorAll("[data-" + cls + "]"), function (el) { have[el.getAttribute("data-" + cls)] = el; });
+  Object.keys(map).forEach(function (id) {
+    var el = have[id];
+    if (!el) { el = document.createElement("div"); el.setAttribute("data-" + cls, id); layer.appendChild(el); }
+    paint(el, map[id]); delete have[id];
+  });
+  Object.keys(have).forEach(function (id) { have[id].remove(); });
+}
+
+/* ---- animations: packets and countdowns ---- */
+var animTimers = [];
+function playAnims(s, list) {
+  animTimers.forEach(clearTimeout); animTimers = [];
+  var t = 0;
+  (list || []).forEach(function (a) {
+    if (a.count) { animTimers.push(setTimeout(function () { countdown(a.count); }, t)); t += 1800; return; }
+    var label = typeof a.label === "function" ? a.label() : a.label;
+    var pts = a.path.map(function (r) { return pt(s, r); });
+    animTimers.push(setTimeout(function () { flyPacket(label, pts, a.kind); }, t));
+    t += 350 * pts.length + 250;
+  });
+  return t;
+}
+function flyPacket(label, pts, kind) {
+  var el = document.createElement("div");
+  el.className = "pkt " + kind;
+  var spr = kind === "ctl" ? "envCtl" : kind === "rst" ? "envRst" : "env";
+  el.innerHTML = '<img alt="" src="' + sprite("env", spr) + '"><span>' + showNL(label) + "</span>";
+  layer.appendChild(el);
+  var w = el.offsetWidth;
+  var frames = pts.map(function (p) { return {transform: "translate(" + (p[0] - w / 2) + "px," + (p[1] - 20) + "px)"}; });
+  var anim = el.animate(frames, {duration: 350 * pts.length, easing: "steps(" + (pts.length * 6) + ")", fill: "forwards"});
+  anim.onfinish = function () { setTimeout(function () { el.remove(); }, 450); };
+}
+function countdown(id) {
+  var el = layer.querySelector('[data-actor="' + id + '"] .badge.b-err');
+  if (!el) return;
+  var n = 20;
+  el.textContent = "⏱ 20 s";
+  var iv = setInterval(function () { n -= 2; el.textContent = "⏱ " + Math.max(n, 0) + " s"; if (n <= 0) clearInterval(iv); }, 160);
+}
+
+/* ---- code panel ---- */
+function renderCode(ref) {
+  var box = $("code");
+  if (!ref) { $("codeName").textContent = "(no code for this step)"; box.innerHTML = ""; return; }
+  var c = CODES[ref[0]];
+  $("codeName").textContent = c.name;
+  var text = c.text, idx = text.indexOf(ref[1]);
+  var hlLine = idx < 0 ? -1 : text.slice(0, idx).split("\n").length - 1 + (ref[2] || 0);
+  var lines = text.split("\n");
+  box.innerHTML = lines.map(function (ln, i) {
+    return '<span class="ln' + (i === hlLine ? " hl" : "") + '" data-n="' + (i + 1) + '">' + colour(ln) + "</span>";
+  }).join("");
+  var hl = box.querySelector(".hl");
+  if (hl) box.scrollTop = hl.offsetTop - box.clientHeight / 2 + 10;
+}
+function colour(ln) {
+  var out = "", re = /(\/\*.*?(\*\/|$)|^\s*\*.*$|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|[A-Za-z_]\w*)/g, last = 0, m;
+  while ((m = re.exec(ln))) {
+    out += esc(ln.slice(last, m.index));
+    var tok = m[0];
+    if (/^\/\*|^\s*\*/.test(tok)) out += '<span class="cm">' + esc(tok) + "</span>";
+    else if (/^["']/.test(tok)) out += '<span class="st">' + esc(tok) + "</span>";
+    else if (CODE_TERMS[tok]) out += '<span class="term" tabindex="0" data-k="' + CODE_TERMS[tok] + '">' + tok + "</span>";
+    else out += esc(tok);
+    last = m.index + tok.length;
+  }
+  return out + esc(ln.slice(last));
+}
+
+/* ---- terminals ---- */
+function renderTerms(s) {
+  var keys = ["t1", "t2", "t3", "t4"].filter(function (k) { return s.termNames[k]; });
+  var box = $("terms");
+  box.innerHTML = keys.map(function (k) {
+    var lines = (s.term[k] || []).map(function (l) {
+      var h = esc(l).replace(/\{you\}/g, '<span class="you">').replace(/\{\/you\}/g, "</span>").replace(/\{er\}/g, '<span class="er">').replace(/\{\/er\}/g, "</span>");
+      return h.replace(/^\$/, '<span class="pr">$</span>');
+    }).join("\n");
+    return '<div class="term-win"><div class="tt">' + esc(s.termNames[k]) + '</div><pre id="pre-' + k + '">' + lines + "</pre></div>";
+  }).join("");
+  keys.forEach(function (k) { var p = $("pre-" + k); p.scrollTop = p.scrollHeight; });
+}
+
+/* ---- narration, quiz, input, controls ---- */
+function render(animate) {
+  var sc = SCENES[cur.scene];
+  var s = stateAt(cur.scene, cur.step);
+  renderStage(s);
+  renderTerms(s);
+  $("sceneTitle").textContent = sc.title;
+  var st = sc.steps[cur.step];
+  $("stepNo").textContent = "Step " + (cur.step + 1) + " of " + sc.steps.length;
+  $("say").innerHTML = terms(st.say);
+  renderCode(st.code);
+  var key = cur.scene + ":" + cur.step;
+  /* quiz */
+  var qz = $("quiz"), blocked = false;
+  if (st.quiz) {
+    var q = st.quiz, ans = ANSWERED[key];
+    qz.style.display = "block";
+    qz.innerHTML = '<div class="qq">❓ What happens next? ' + esc(q.q) + "</div>" + q.opts.map(function (o, i) {
+      var cls = ans === undefined ? "" : (i === q.ok ? "right" : (i === ans ? "wrong" : ""));
+      return '<button data-i="' + i + '" class="' + cls + '"' + (ans !== undefined ? " disabled" : "") + ">" + esc(o) + "</button>";
+    }).join("") + (ans !== undefined ? '<div class="why">' + (ans === q.ok ? "✅ Right. " : "❌ Not quite. ") + terms(q.why) + "</div>" : "");
+    if (ans === undefined) blocked = true;
+    Array.prototype.forEach.call(qz.querySelectorAll("button[data-i]"), function (b) {
+      b.onclick = function () { ANSWERED[key] = +b.getAttribute("data-i"); render(false); };
+    });
+  } else { qz.style.display = "none"; qz.innerHTML = ""; }
+  /* typed input */
+  var ib = $("inbox");
+  if (st.input) {
+    var sent = INPUTS[st.input.key] !== undefined;
+    ib.style.display = "block";
+    ib.innerHTML = "<div>" + esc(st.input.label) + '</div><input id="reply" maxlength="40" value="' + esc(sent ? INPUTS[st.input.key] : st.input.def) + '"><button id="sendIt">SEND ⏎</button>' + (sent ? ' <span class="src">sent, press Next</span>' : "");
+    if (!sent) blocked = true;
+    var go = function () { var v = $("reply").value.trim() || st.input.def; INPUTS[st.input.key] = v; next(); };
+    $("sendIt").onclick = go;
+    $("reply").onkeydown = function (e) { if (e.key === "Enter") go(); };
+  } else { ib.style.display = "none"; ib.innerHTML = ""; }
+
+  $("back").disabled = cur.step <= 0;
+  var last = cur.step >= sc.steps.length - 1;
+  $("next").disabled = blocked || (last && cur.scene >= SCENES.length - 1);
+  $("next").textContent = last ? "NEXT SCENE ▶" : "NEXT ▶";
+  if (last) doneScenes[cur.scene] = true;
+  renderTabs();
+
+  animTimers.forEach(clearTimeout); animTimers = [];
+  Array.prototype.forEach.call(layer.querySelectorAll(".pkt"), function (e) { e.remove(); });
+  var dur = animate ? playAnims(s, st.anim) : 0;
+  clearTimeout(playTimer);
+  if (playing) {
+    if (blocked || (last && cur.scene >= SCENES.length - 1)) setPlay(false);
+    else playTimer = setTimeout(next, Math.max(3800, dur + 1600));
+  }
+}
+function next() {
+  var sc = SCENES[cur.scene];
+  if (cur.step < sc.steps.length - 1) { cur.step++; render(true); }
+  else if (cur.scene < SCENES.length - 1) { goScene(cur.scene + 1); }
+}
+function back() { if (cur.step > 0) { cur.step--; render(false); } }
+function goScene(i) { cur.scene = i; cur.step = 0; layer.innerHTML = ""; render(true); }
+function setPlay(on) { playing = on; $("play").textContent = on ? "❚❚ PAUSE" : "▶▶ AUTO"; if (on) { clearTimeout(playTimer); playTimer = setTimeout(next, 1200); } else clearTimeout(playTimer); }
+function renderTabs() {
+  $("tabs").innerHTML = SCENES.map(function (sc, i) {
+    return '<button data-s="' + i + '" class="' + (i === cur.scene ? "on " : "") + (doneScenes[i] ? "done" : "") + '">' + esc(sc.title) + "</button>";
+  }).join("");
+  Array.prototype.forEach.call($("tabs").querySelectorAll("button"), function (b) {
+    b.onclick = function () { setPlay(false); goScene(+b.getAttribute("data-s")); };
+  });
+}
+$("next").onclick = function () { setPlay(false); next(); };
+$("back").onclick = function () { setPlay(false); back(); };
+$("restart").onclick = function () { setPlay(false); goScene(cur.scene); };
+$("play").onclick = function () { setPlay(!playing); };
+document.addEventListener("keydown", function (e) {
+  if (e.target.tagName === "INPUT") return;
+  if (e.key === "ArrowRight" && !$("next").disabled) { setPlay(false); next(); }
+  if (e.key === "ArrowLeft") { setPlay(false); back(); }
+});
+
+/* ---- tooltips ---- */
+var tip = $("tip"), tipFor = null;
+function showTip(el) {
+  var g = G[el.getAttribute("data-k")]; if (!g) return;
+  tip.innerHTML = "<h4>" + esc(g.t) + "</h4><div>" + g.m + "</div>" + (g.o ? '<div class="o"><b>Origin:</b> ' + g.o + "</div>" : "") +
+    (g.s ? '<div class="s">Source: ' + esc(g.s.replace(/^https?:\/\//, "")) + "</div>" : "");
+  tip.style.display = "block";
+  var r = el.getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
+  var x = Math.min(Math.max(8, r.left), window.innerWidth - tw - 8);
+  var y = r.bottom + 8; if (y + th > window.innerHeight - 8) y = Math.max(8, r.top - th - 8);
+  tip.style.left = x + "px"; tip.style.top = y + "px"; tipFor = el;
+}
+function hideTip() { tip.style.display = "none"; tipFor = null; }
+document.addEventListener("mouseover", function (e) { var t = e.target.closest && e.target.closest(".term"); if (t) showTip(t); });
+document.addEventListener("mouseout", function (e) { var t = e.target.closest && e.target.closest(".term"); if (t && !t.contains(e.relatedTarget)) hideTip(); });
+document.addEventListener("focusin", function (e) { if (e.target.classList && e.target.classList.contains("term")) showTip(e.target); });
+document.addEventListener("focusout", function (e) { if (e.target.classList && e.target.classList.contains("term")) hideTip(); });
+document.addEventListener("click", function (e) {
+  var t = e.target.closest && e.target.closest(".term");
+  if (t) { if (tipFor === t) hideTip(); else showTip(t); } else if (!e.target.closest("#tip")) hideTip();
+});
+window.addEventListener("scroll", hideTip, {passive: true});
+
+/* ---- glossary list ---- */
+$("glossary").innerHTML = Object.keys(G).map(function (k) {
+  var g = G[k];
+  return "<div><b>" + esc(g.t) + "</b><div>" + g.m + "</div>" + (g.o ? '<div class="o">Origin: ' + g.o + "</div>" : "") + "</div>";
+}).join("");
+
+/* ---- scale the 960×450 stage to the available width ---- */
+function fit() {
+  var w = $("stageWrap").clientWidth, k = w / 960;
+  stage.style.transform = "scale(" + k + ")";
+  $("stageWrap").style.height = (450 * k + 6) + "px";
+}
+window.addEventListener("resize", fit);
+fit();
+goScene(0);
+</script>
+</body>
+</html>
+
